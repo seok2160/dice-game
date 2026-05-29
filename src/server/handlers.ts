@@ -28,6 +28,12 @@ export function registerHandlers(io: Server, store: MemoryStore): TurnScheduler 
     if (pid) scheduler.start(state.roomId, pid, state.meta.turnSeq, state.config.turnTimeMs);
   }
 
+  /** forceBet 결과에서 하나의 타입(일반 우선)만 골라 베팅 인수 반환 */
+  function pickOneDiceType(bet: { pip: PipValue; ownCount: number; whiteCount: number }) {
+    if (bet.ownCount >= bet.whiteCount) return { pip: bet.pip, ownCount: bet.ownCount,  whiteCount: 0 };
+    return                                      { pip: bet.pip, ownCount: 0,             whiteCount: bet.whiteCount };
+  }
+
   function scheduleBotTurn(state: GameState): void {
     const pid = state.turnOrder[state.currentTurnIdx];
     const player = state.players.find(p => p.id === pid);
@@ -42,7 +48,8 @@ export function registerHandlers(io: Server, store: MemoryStore): TurnScheduler 
           if (!curPlayer?.isBot || curPlayer.id !== pid || s.phase !== 'ROLLING') return s;
 
           const { state: afterRoll, roll } = Engine.roll(s, curPid);
-          const bet = Engine.forceBet(roll);
+          const raw = Engine.forceBet(roll);
+          const bet = raw ? pickOneDiceType(raw) : null;
           const result = bet
             ? Engine.applyBet(afterRoll, curPid, bet.pip, bet.ownCount, bet.whiteCount)
             : Engine.pass(afterRoll);
@@ -92,14 +99,16 @@ export function registerHandlers(io: Server, store: MemoryStore): TurnScheduler 
 
         if (s.phase === 'ROLLING') {
           const { state: rolled, roll } = Engine.roll(s, playerId);
-          const forced = Engine.forceBet(roll);
+          const raw = Engine.forceBet(roll);
+          const forced = raw ? pickOneDiceType(raw) : null;
           return forced
             ? Engine.applyBet(rolled, playerId, forced.pip, forced.ownCount, forced.whiteCount)
             : Engine.pass(rolled);
         }
 
         if (s.phase === 'CHOOSING' && s.currentRoll) {
-          const forced = Engine.forceBet(s.currentRoll);
+          const raw = Engine.forceBet(s.currentRoll);
+          const forced = raw ? pickOneDiceType(raw) : null;
           return forced
             ? Engine.applyBet(s, playerId, forced.pip, forced.ownCount, forced.whiteCount)
             : Engine.pass(s);
@@ -230,10 +239,11 @@ export function registerHandlers(io: Server, store: MemoryStore): TurnScheduler 
     });
 
     // turn:bet ────────────────────────────────────────────────────────────────
-    socket.on('turn:bet', async ({ pip }: { pip: number }, ack) => {
+    socket.on('turn:bet', async ({ pip, diceType }: { pip: number; diceType: 'own' | 'white' }, ack) => {
       const { roomId, playerId } = socket.data;
       if (!roomId || !playerId) return ack?.({ ok: false, code: 'NOT_IN_ROOM', msg: 'Join a room first' });
       if (!Number.isInteger(pip) || pip < 1 || pip > 6) return ack?.({ ok: false, code: 'INVALID_PIP', msg: 'pip must be 1-6' });
+      if (diceType !== 'own' && diceType !== 'white') return ack?.({ ok: false, code: 'INVALID_TYPE', msg: 'diceType must be own or white' });
 
       try {
         let settling = false;
@@ -241,9 +251,9 @@ export function registerHandlers(io: Server, store: MemoryStore): TurnScheduler 
 
         const next = await store.update(roomId, (s) => {
           if (!s.currentRoll) throw new Engine.GameError('NO_ROLL', 'Roll first');
-          const own   = s.currentRoll.ownPips[pipVal];
-          const white = s.currentRoll.whitePips[pipVal];
-          if (own + white === 0) throw new Engine.GameError('EMPTY_PIP', 'No dice showing that pip');
+          const own   = diceType === 'own'   ? s.currentRoll.ownPips[pipVal]   : 0;
+          const white = diceType === 'white' ? s.currentRoll.whitePips[pipVal] : 0;
+          if (own + white === 0) throw new Engine.GameError('EMPTY_PIP', 'No dice of that type showing that pip');
           const result = Engine.applyBet(s, playerId, pipVal, own, white);
           settling = result.phase === 'SETTLING';
           return result;
@@ -299,6 +309,26 @@ export function registerHandlers(io: Server, store: MemoryStore): TurnScheduler 
         if (!state) return ack?.({ ok: false, code: 'ROOM_NOT_FOUND', msg: 'Room not found' });
         const pid = socket.data.playerId as string | undefined;
         ack?.({ ok: true, data: pid ? Engine.privateView(state, pid) : Engine.publicView(state) });
+      } catch (e) { errAck(ack, e); }
+    });
+
+    // chat:message ────────────────────────────────────────────────────────────
+    socket.on('chat:message', async ({ text }: { text: string }, ack) => {
+      const { roomId, playerId } = socket.data;
+      if (!roomId || !playerId) return ack?.({ ok: false, code: 'NOT_IN_ROOM', msg: 'Join a room first' });
+      const trimmed = typeof text === 'string' ? text.trim() : '';
+      if (!trimmed || trimmed.length > 200) return ack?.({ ok: false, code: 'INVALID_MSG', msg: 'Message must be 1-200 chars' });
+      try {
+        const state = await store.load(roomId);
+        const player = state?.players.find(p => p.id === playerId);
+        io.to(roomId).emit('chat:message', {
+          playerId,
+          nickname: player?.nickname ?? '?',
+          color:    player?.color    ?? '#aaa',
+          text:     trimmed,
+          ts:       Date.now(),
+        });
+        ack?.({ ok: true });
       } catch (e) { errAck(ack, e); }
     });
 
