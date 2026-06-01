@@ -126,6 +126,94 @@ body { font-family: 'Segoe UI', sans-serif; background: #1a1a2e; color: #eee; mi
 #chat-send:hover { background: #c73652; }
 #chat-badge { display: none; background: #e94560; color: #fff; border-radius: 10px;
   font-size: .7rem; padding: 1px 6px; margin-left: 5px; vertical-align: middle; }
+
+/* ── 우승자 오버레이 ── */
+#winner-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.88);
+  z-index: 500; align-items: center; justify-content: center;
+  flex-direction: column;
+}
+#winner-overlay.show { display: flex; }
+
+/* 파티클 캔버스 */
+#confetti-canvas {
+  position: fixed; inset: 0; pointer-events: none; z-index: 499;
+}
+
+#winner-card {
+  position: relative; z-index: 501;
+  background: linear-gradient(145deg, #1a1a3e, #0f0f28);
+  border: 3px solid #f0c040;
+  box-shadow: 0 0 60px rgba(240,192,64,.45), 0 0 120px rgba(240,192,64,.15);
+  border-radius: 20px;
+  padding: 40px 48px 32px;
+  text-align: center; max-width: 460px; width: 92%;
+  animation: wCardIn .5s cubic-bezier(.17,.67,.35,1.3) both;
+}
+@keyframes wCardIn {
+  from { transform: scale(.6) translateY(40px); opacity: 0; }
+  to   { transform: scale(1)  translateY(0);    opacity: 1; }
+}
+
+/* 트로피 펄스 */
+#winner-card .w-trophy {
+  font-size: 4.5rem; line-height: 1;
+  animation: trophyPulse 1.4s ease-in-out infinite;
+  display: block; margin-bottom: 4px;
+}
+@keyframes trophyPulse {
+  0%,100% { transform: scale(1);    filter: drop-shadow(0 0 6px #f0c040); }
+  50%      { transform: scale(1.12); filter: drop-shadow(0 0 18px #f0c040); }
+}
+
+#winner-card .w-subtitle {
+  font-size: .85rem; letter-spacing: .12em; text-transform: uppercase;
+  color: #f0c040; opacity: .7; margin-bottom: 14px;
+}
+#winner-card .w-name {
+  font-size: 2.4rem; font-weight: 900; line-height: 1.15;
+  margin-bottom: 6px;
+  text-shadow: 0 2px 12px rgba(0,0,0,.6);
+}
+#winner-card .w-money {
+  font-size: 1.15rem; color: #f0c040; margin-bottom: 20px; font-weight: bold;
+}
+
+/* 순위표 */
+#winner-card .w-rankings {
+  border-top: 1px solid #2a2a5a; padding-top: 16px; margin-bottom: 22px;
+  text-align: left;
+}
+#winner-card .w-rank-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 0; border-bottom: 1px solid #1a1a3a; font-size: .88rem;
+}
+#winner-card .w-rank-row:last-child { border-bottom: none; }
+#winner-card .w-rank-num {
+  width: 26px; height: 26px; border-radius: 50%; display: flex;
+  align-items: center; justify-content: center;
+  font-weight: bold; font-size: .8rem; flex-shrink: 0;
+}
+.rank-1 { background: #f0c040; color: #1a1a1a; }
+.rank-2 { background: #aaa;    color: #1a1a1a; }
+.rank-3 { background: #cd7f32; color: #fff; }
+.rank-n { background: #2a2a4a; color: #888; }
+#winner-card .w-rank-name { flex: 1; font-weight: bold; }
+#winner-card .w-rank-money { color: #f0c040; font-size: .85rem; }
+#winner-card .w-rank-tag {
+  font-size: .68rem; padding: 2px 7px; border-radius: 10px; font-weight: bold;
+}
+
+/* 버튼 */
+#winner-card .w-close {
+  width: 100%; padding: 12px;
+  background: linear-gradient(135deg, #e94560, #c73652);
+  color: #fff; border: none; border-radius: 10px;
+  font-size: 1.05rem; font-weight: bold; cursor: pointer;
+  transition: opacity .15s;
+}
+#winner-card .w-close:hover { opacity: .85; }
 </style>
 </head>
 <body>
@@ -147,6 +235,21 @@ body { font-family: 'Segoe UI', sans-serif; background: #1a1a2e; color: #eee; mi
     <div id="tunnel-url" style="font-size:.85rem;color:#5bc8f5;word-break:break-all;cursor:pointer;"
          title="클릭해서 복사" onclick="copyTunnel()"></div>
     <div style="font-size:.7rem;color:#666;margin-top:5px;">클릭해서 복사 · 이 주소를 친구에게 공유하세요</div>
+  </div>
+</div>
+
+<!-- 파티클 캔버스 -->
+<canvas id="confetti-canvas"></canvas>
+
+<!-- 우승자 오버레이 -->
+<div id="winner-overlay">
+  <div id="winner-card">
+    <span class="w-trophy">🏆</span>
+    <div class="w-subtitle" id="w-subtitle"></div>
+    <div class="w-name"  id="w-name"></div>
+    <div class="w-money" id="w-money"></div>
+    <div class="w-rankings" id="w-rankings"></div>
+    <button class="w-close" onclick="closeWinnerOverlay()">확인 · 결과 닫기</button>
   </div>
 </div>
 
@@ -248,6 +351,17 @@ let socket, myPlayerId, myRoomId, isHost = false;
 let gameState = null, currentRoll = null;
 let timerInterval = null;
 
+// sessionStorage에서 세션 복원 (모바일 페이지 재로드 대응)
+(function restoreSession() {
+  const saved = sessionStorage.getItem('diceSession');
+  if (saved) {
+    try {
+      const { pid, rid, host } = JSON.parse(saved);
+      myPlayerId = pid; myRoomId = rid; isHost = host;
+    } catch { sessionStorage.removeItem('diceSession'); }
+  }
+})();
+
 // ─── 공개 URL 표시 ────────────────────────────────────────────────────────────
 (async function loadTunnelUrl() {
   try {
@@ -342,19 +456,35 @@ function connect() {
     autoConnect: false,
     reconnection: true,
     reconnectionAttempts: Infinity,
-    reconnectionDelay: 2000,
-    reconnectionDelayMax: 8000,
+    reconnectionDelay: 1000,
+    reconnectionDelayMax: 5000,
     timeout: 60000,
+    transports: ['websocket', 'polling'],  // WebSocket 우선, 실패 시 polling 폴백
   });
 
   socket.on('connect', () => {
     hideWakeOverlay();
-    log('서버 연결됨', 'sys');
     hideReconnectBanner();
     if (myRoomId && myPlayerId) {
-      socket.emit('room:state', { roomId: myRoomId }, (res) => {
-        if (res?.ok) { gameState = res.data; renderGame(); }
+      socket.emit('room:state', { roomId: myRoomId, playerId: myPlayerId }, (res) => {
+        if (res?.ok) {
+          gameState = res.data;
+          // 게임 화면이 아직 표시 중이면 renderGame만, 아니면 enterGame도
+          if (document.getElementById('game').style.display !== 'none') {
+            renderGame();
+          } else {
+            enterGame();
+            renderGame();
+          }
+          log('재연결됨', 'sys');
+        } else {
+          // 방이 사라진 경우 세션 초기화
+          sessionStorage.removeItem('diceSession');
+          myPlayerId = myRoomId = null;
+        }
       });
+    } else {
+      log('서버 연결됨', 'sys');
     }
   });
 
@@ -367,7 +497,11 @@ function connect() {
     showReconnectBanner();
   });
 
-  socket.on('state:update', (state) => { gameState = state; renderGame(); });
+  socket.on('state:update', (state) => {
+    gameState = state;
+    if (state.phase === 'WAITING') closeWinnerOverlay();
+    renderGame();
+  });
 
   socket.on('turn:rolled', ({ roll }) => {
     currentRoll = roll;
@@ -377,13 +511,37 @@ function connect() {
   socket.on('turn:timeout',      ({ playerId }) => log(`⏰ ${nick(playerId)} 타임아웃 — 자동처리`, 'sys'));
   socket.on('player:joined',     ({ player })   => log(`👤 ${player.nickname} 입장`));
   socket.on('player:disconnected',({ playerId }) => log(`🔌 ${nick(playerId)} 연결 끊김`, 'err'));
-  socket.on('game:ended',        ({ winner })   => { log(`🏆 게임 종료! 승자: ${winner}`, 'win'); stopTimer(); });
+  socket.on('game:ended', ({ winner, winnerDetails }) => {
+    log(`🏆 게임 종료! 승자: ${winner}`, 'win');
+    stopTimer();
+    showWinnerOverlay(winner, winnerDetails);
+  });
 
   socket.on('chat:message', (msg) => {
     appendChat({ ...msg, isMe: msg.playerId === myPlayerId });
   });
 
   socket.connect();
+}
+
+// 모바일 화면 복귀 시 연결 상태 확인 및 강제 재연결
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && socket) {
+    if (!socket.connected) {
+      socket.connect();
+    } else if (myRoomId && myPlayerId) {
+      // 연결은 살아있지만 상태가 오래됐을 수 있으므로 동기화
+      socket.emit('room:state', { roomId: myRoomId, playerId: myPlayerId }, (res) => {
+        if (res?.ok) { gameState = res.data; renderGame(); }
+      });
+    }
+  }
+});
+
+// 페이지 로드 시 이전 세션 자동 재연결 (모바일 새로고침 대응)
+if (myRoomId && myPlayerId) {
+  enterGame();
+  connect();
 }
 
 // ─── 로비 버튼 ────────────────────────────────────────────────────────────────
@@ -397,6 +555,7 @@ document.getElementById('create-btn').onclick = () => {
     myRoomId   = res.data.roomId;
     isHost     = true;
     gameState  = res.data.state;
+    sessionStorage.setItem('diceSession', JSON.stringify({ pid: myPlayerId, rid: myRoomId, host: true }));
     enterGame();
     renderGame();
     log(`방 생성됨 — 코드: ${myRoomId}`, 'sys');
@@ -414,6 +573,7 @@ document.getElementById('join-btn').onclick = () => {
     myPlayerId = res.data.playerId;
     myRoomId   = roomId;
     gameState  = res.data.state;
+    sessionStorage.setItem('diceSession', JSON.stringify({ pid: myPlayerId, rid: myRoomId, host: false }));
     enterGame();
     renderGame();
     log(`방 ${roomId} 입장 완료`, 'sys');
@@ -488,7 +648,7 @@ function renderPlayers(s) {
       <div class="pmoney">${won(p.money)}</div>
       <div class="pdice">
         🎲 ${p.ownDiceRemaining}개
-        ${p.whiteDiceRemaining > 0 ? `<span class="dice-white" style="margin-left:4px">⬜ 흰${p.whiteDiceRemaining}</span>` : ''}
+        ${s.config.useWhiteDice ? `<span class="dice-white" style="margin-left:4px">⬜ 흰${p.whiteDiceRemaining}</span>` : ''}
       </div>
       ${active ? '<div class="ptag">현재 턴</div>' : ''}
       ${p.isBot ? '<div class="ptag" style="background:#8e44ad">🤖 AI</div>' : ''}
@@ -592,6 +752,7 @@ function renderActions(s) {
       replay.onclick = () => {
         socket.emit('game:reset', {}, (res) => {
           if (!res.ok) log('리셋 실패: ' + res.msg, 'err');
+          else sessionStorage.removeItem('diceSession');
         });
       };
       if (!document.getElementById('replay-btn')) {
@@ -611,41 +772,56 @@ function doBet(pip, diceType, count) {
   });
 }
 
+function doPass() {
+  socket.emit('turn:pass', {}, (res) => {
+    if (!res.ok) { log(res.msg, 'err'); return; }
+    currentRoll = null;
+    document.getElementById('pip-choice').style.display = 'none';
+    log('이번 턴 패스');
+  });
+}
+
 function buildPipButtons(roll) {
   const c = document.getElementById('pip-btns');
   c.innerHTML = '';
+  const hasWhite = Object.values(roll.whitePips).some(v => v > 0);
   let hasAny = false;
 
   for (let pip = 1; pip <= 6; pip++) {
     const own   = roll.ownPips[pip]   || 0;
     const white = roll.whitePips[pip] || 0;
-    if (own === 0 && white === 0) continue;
-    hasAny = true;
+    if (own > 0 || white > 0) hasAny = true;
 
-    // 일반 주사위 버튼
-    if (own > 0) {
+    // 일반 주사위 버튼 — 0개면 클릭 시 패스
+    {
       const btn = document.createElement('button');
       btn.className = 'pip-btn';
       btn.innerHTML = `<strong>${pip}번</strong><br>
         <small>🎲 <span class="dice-own">${own}개</span></small>`;
-      btn.onclick = () => doBet(pip, 'own', own);
+      btn.onclick = own > 0 ? () => doBet(pip, 'own', own) : () => doPass();
       c.appendChild(btn);
     }
 
-    // 흰색 주사위 버튼 — 파란 테두리로 명확히 구분
-    if (white > 0) {
+    // 흰색 주사위 버튼 — 흰 주사위를 한 개라도 굴렸을 때만 표시
+    if (hasWhite) {
       const btn = document.createElement('button');
-      btn.className = 'pip-btn';
+      btn.className       = 'pip-btn';
       btn.style.borderColor = '#3a6a9a';
-      btn.innerHTML = `<strong>${pip}번</strong><br>
+      btn.innerHTML       = `<strong>${pip}번</strong><br>
         <small><span class="dice-white">⬜ 흰${white}개</span></small>`;
-      btn.onclick = () => doBet(pip, 'white', white);
+      btn.onclick = white > 0 ? () => doBet(pip, 'white', white) : () => doPass();
       c.appendChild(btn);
     }
   }
 
   if (!hasAny) {
-    c.innerHTML = '<span style="color:#666;font-size:.85rem">배팅할 주사위가 없습니다</span>';
+    // 배팅할 주사위가 전혀 없는 경우 패스 버튼만 표시
+    const btn = document.createElement('button');
+    btn.className   = 'pip-btn';
+    btn.style.borderColor = '#555';
+    btn.innerHTML   = '<strong>패스</strong><br><small style="color:#888">주사위 없음</small>';
+    btn.onclick     = () => doPass();
+    c.appendChild(btn);
   }
 }
 
@@ -750,6 +926,122 @@ function appendChat({ nickname, color, text, ts, isMe }) {
 function escHtml(str) {
   return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
             .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// ─── 파티클(콘페티) ───────────────────────────────────────────────────────────
+let _confettiRaf = null;
+function startConfetti() {
+  const canvas = document.getElementById('confetti-canvas');
+  if (!canvas) return;
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+  const ctx = canvas.getContext('2d');
+  const COLORS = ['#f0c040','#e94560','#5bc8f5','#27ae60','#a29bfe','#fd79a8','#fff'];
+  const pieces = Array.from({ length: 120 }, () => ({
+    x: Math.random() * canvas.width,
+    y: Math.random() * -canvas.height,
+    r: 5 + Math.random() * 7,
+    c: COLORS[Math.floor(Math.random() * COLORS.length)],
+    vx: (Math.random() - .5) * 2.5,
+    vy: 2 + Math.random() * 3,
+    spin: (Math.random() - .5) * .15,
+    angle: Math.random() * Math.PI * 2,
+  }));
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    pieces.forEach(p => {
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.angle);
+      ctx.fillStyle = p.c;
+      ctx.fillRect(-p.r / 2, -p.r / 2, p.r, p.r * .5);
+      ctx.restore();
+      p.x += p.vx; p.y += p.vy; p.angle += p.spin;
+      if (p.y > canvas.height) { p.y = -p.r; p.x = Math.random() * canvas.width; }
+    });
+    _confettiRaf = requestAnimationFrame(draw);
+  }
+  draw();
+}
+function stopConfetti() {
+  if (_confettiRaf) { cancelAnimationFrame(_confettiRaf); _confettiRaf = null; }
+  const canvas = document.getElementById('confetti-canvas');
+  if (canvas) canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+}
+
+// ─── 우승자 오버레이 ──────────────────────────────────────────────────────────
+function showWinnerOverlay(winner, details) {
+  const elSubtitle  = document.getElementById('w-subtitle');
+  const elName      = document.getElementById('w-name');
+  const elMoney     = document.getElementById('w-money');
+  const elRankings  = document.getElementById('w-rankings');
+
+  // 전체 플레이어 순위표 (항상 표시)
+  const players = gameState ? [...gameState.players].sort((a, b) => b.money - a.money) : [];
+  const rankMedals = ['rank-1','rank-2','rank-3'];
+
+  if (!details || details.isDraw) {
+    elSubtitle.textContent = '게임 종료';
+    elName.innerHTML       = '<span style="color:#aaa">🤝 무승부!</span>';
+    elMoney.textContent    = '';
+  } else if (details.mode === '2v2') {
+    const winTeam  = details.winners[0]?.team ?? '?';
+    const teamCol  = winTeam === 'A' ? '#2980b9' : '#c0392b';
+    const teamMoney = details.teamMoneys ? details.teamMoneys[winTeam] : 0;
+    elSubtitle.textContent = '팀전 우승';
+    elName.innerHTML = `<span style="color:${teamCol}">${winTeam}팀 승리! 🎉</span>`;
+    elMoney.textContent = `팀 합산 ${won(teamMoney)}`;
+  } else {
+    const w = details.winners[0];
+    elSubtitle.textContent = '개인전 우승';
+    elName.innerHTML = `<span style="color:${w.color}">${escHtml(w.nickname)}</span> 🎉`;
+    elMoney.textContent = won(w.money);
+  }
+
+  // 순위표 렌더
+  if (details && !details.isDraw && details.mode === '2v2') {
+    // 2v2: 팀별 합산 표시
+    const aTotal = details.teamMoneys?.A ?? 0;
+    const bTotal = details.teamMoneys?.B ?? 0;
+    const winTeam = details.winners[0]?.team;
+    elRankings.innerHTML = [
+      { team: 'A', money: aTotal },
+      { team: 'B', money: bTotal },
+    ].sort((a, b) => b.money - a.money).map((t, i) => {
+      const isWin = t.team === winTeam;
+      const teamCol = t.team === 'A' ? '#2980b9' : '#c0392b';
+      const members = players.filter(p => p.team === t.team)
+        .map(p => `<span style="color:${p.color}">${escHtml(p.nickname)}</span>`).join(', ');
+      return `<div class="w-rank-row">
+        <div class="w-rank-num ${rankMedals[i] ?? 'rank-n'}">${i + 1}</div>
+        <div class="w-rank-name">
+          <span style="color:${teamCol};font-weight:900">${t.team}팀</span>
+          <span style="font-size:.78rem;color:#888;margin-left:6px">${members}</span>
+        </div>
+        <div class="w-rank-money">${won(t.money)}</div>
+        ${isWin ? '<span class="w-rank-tag" style="background:#f0c040;color:#1a1a1a">👑 우승</span>' : ''}
+      </div>`;
+    }).join('');
+  } else {
+    // 개인전: 전원 순위
+    elRankings.innerHTML = players.map((p, i) => {
+      const isWinner = details && !details.isDraw && details.winners[0]?.id === p.id;
+      return `<div class="w-rank-row">
+        <div class="w-rank-num ${rankMedals[i] ?? 'rank-n'}">${i + 1}</div>
+        <div class="w-rank-name" style="color:${p.color}">${escHtml(p.nickname)}${p.id === myPlayerId ? ' <small style="color:#aaa">(나)</small>' : ''}</div>
+        <div class="w-rank-money">${won(p.money)}</div>
+        ${isWinner ? '<span class="w-rank-tag" style="background:#f0c040;color:#1a1a1a">👑 우승</span>' : ''}
+      </div>`;
+    }).join('');
+  }
+
+  document.getElementById('winner-overlay').classList.add('show');
+  if (!details?.isDraw) startConfetti();
+}
+
+function closeWinnerOverlay() {
+  document.getElementById('winner-overlay').classList.remove('show');
+  stopConfetti();
 }
 </script>
 </body>

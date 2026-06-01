@@ -2,7 +2,7 @@ import { Server, Socket } from 'socket.io';
 import { MemoryStore } from '../store/MemoryStore';
 import { TurnScheduler, TimeoutPayload } from '../engine/TurnScheduler';
 import * as Engine from '../engine/GameEngine';
-import { GameState, PipValue } from '../engine/types';
+import { GameState, PipValue, Player } from '../engine/types';
 import { v4 as uuidv4 } from 'uuid';
 
 const PLAYER_LIMIT = 4;
@@ -75,7 +75,10 @@ export function registerHandlers(io: Server, store: MemoryStore): TurnScheduler 
     });
     await broadcast(settled);
     if (settled.phase === 'ENDED') {
-      io.to(roomId).emit('game:ended', { winner: Engine.getWinner(settled) });
+      io.to(roomId).emit('game:ended', {
+        winner: Engine.getWinner(settled),
+        winnerDetails: Engine.getWinnerDetails(settled),
+      });
     } else if (settled.phase === 'ROLLING') {
       setTimeout(() => {
         startTimer(settled);
@@ -238,6 +241,30 @@ export function registerHandlers(io: Server, store: MemoryStore): TurnScheduler 
       } catch (e) { errAck(ack, e); }
     });
 
+    // turn:pass ───────────────────────────────────────────────────────────────
+    socket.on('turn:pass', async (_: unknown, ack) => {
+      const { roomId, playerId } = socket.data;
+      if (!roomId || !playerId) return ack?.({ ok: false, code: 'NOT_IN_ROOM', msg: 'Join a room first' });
+      try {
+        let settling = false;
+        const next = await store.update(roomId, (s) => {
+          if (s.phase !== 'CHOOSING') throw new Engine.GameError('BAD_PHASE', 'Not in choosing phase');
+          const result = Engine.pass(s);
+          settling = result.phase === 'SETTLING';
+          return result;
+        });
+        scheduler.clear(roomId);
+        await broadcast(next);
+        ack?.({ ok: true });
+        if (settling) {
+          await runSettlement(roomId);
+        } else if (next.phase === 'ROLLING') {
+          startTimer(next);
+          scheduleBotTurn(next);
+        }
+      } catch (e) { errAck(ack, e); }
+    });
+
     // turn:bet ────────────────────────────────────────────────────────────────
     socket.on('turn:bet', async ({ pip, diceType }: { pip: number; diceType: 'own' | 'white' }, ack) => {
       const { roomId, playerId } = socket.data;
@@ -303,12 +330,34 @@ export function registerHandlers(io: Server, store: MemoryStore): TurnScheduler 
     });
 
     // room:state (재접속 후 상태 동기화) ─────────────────────────────────────
-    socket.on('room:state', async ({ roomId: rid }: { roomId: string }, ack) => {
+    socket.on('room:state', async ({ roomId: rid, playerId: pid }: { roomId: string; playerId?: string }, ack) => {
       try {
-        const state = await store.load(rid?.trim().toUpperCase());
+        const roomId = rid?.trim().toUpperCase();
+        const state = await store.load(roomId);
         if (!state) return ack?.({ ok: false, code: 'ROOM_NOT_FOUND', msg: 'Room not found' });
-        const pid = socket.data.playerId as string | undefined;
-        ack?.({ ok: true, data: pid ? Engine.privateView(state, pid) : Engine.publicView(state) });
+
+        if (pid && state.players.find(p => p.id === pid)) {
+          // 재접속: 소켓 데이터 복원, 룸 재입장, connected 상태 갱신
+          socket.data = { playerId: pid, roomId };
+          await socket.join(roomId);
+          const next = await store.update(roomId, (s) => ({
+            ...s,
+            players: s.players.map(p => p.id === pid ? { ...p, connected: true } : p),
+          }));
+          await broadcast(next);
+          // 재접속한 플레이어가 현재 턴이면 타이머 재시작
+          if (next.phase === 'ROLLING' && next.turnOrder[next.currentTurnIdx] === pid) {
+            if (next.turnDeadline) {
+              scheduler.resume(roomId, pid, next.meta.turnSeq, next.turnDeadline);
+            } else {
+              startTimer(next);
+            }
+          }
+          ack?.({ ok: true, data: Engine.privateView(next, pid) });
+        } else {
+          const existingPid = socket.data.playerId as string | undefined;
+          ack?.({ ok: true, data: existingPid ? Engine.privateView(state, existingPid) : Engine.publicView(state) });
+        }
       } catch (e) { errAck(ack, e); }
     });
 
