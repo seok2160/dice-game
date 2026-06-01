@@ -241,6 +241,30 @@ export function registerHandlers(io: Server, store: MemoryStore): TurnScheduler 
       } catch (e) { errAck(ack, e); }
     });
 
+    // turn:pass ───────────────────────────────────────────────────────────────
+    socket.on('turn:pass', async (_: unknown, ack) => {
+      const { roomId, playerId } = socket.data;
+      if (!roomId || !playerId) return ack?.({ ok: false, code: 'NOT_IN_ROOM', msg: 'Join a room first' });
+      try {
+        let settling = false;
+        const next = await store.update(roomId, (s) => {
+          if (s.phase !== 'CHOOSING') throw new Engine.GameError('BAD_PHASE', 'Not in choosing phase');
+          const result = Engine.pass(s);
+          settling = result.phase === 'SETTLING';
+          return result;
+        });
+        scheduler.clear(roomId);
+        await broadcast(next);
+        ack?.({ ok: true });
+        if (settling) {
+          await runSettlement(roomId);
+        } else if (next.phase === 'ROLLING') {
+          startTimer(next);
+          scheduleBotTurn(next);
+        }
+      } catch (e) { errAck(ack, e); }
+    });
+
     // turn:bet ────────────────────────────────────────────────────────────────
     socket.on('turn:bet', async ({ pip, diceType }: { pip: number; diceType: 'own' | 'white' }, ack) => {
       const { roomId, playerId } = socket.data;

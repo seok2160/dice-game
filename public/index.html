@@ -284,6 +284,17 @@ let socket, myPlayerId, myRoomId, isHost = false;
 let gameState = null, currentRoll = null;
 let timerInterval = null;
 
+// sessionStorage에서 세션 복원 (모바일 페이지 재로드 대응)
+(function restoreSession() {
+  const saved = sessionStorage.getItem('diceSession');
+  if (saved) {
+    try {
+      const { pid, rid, host } = JSON.parse(saved);
+      myPlayerId = pid; myRoomId = rid; isHost = host;
+    } catch { sessionStorage.removeItem('diceSession'); }
+  }
+})();
+
 // ─── 공개 URL 표시 ────────────────────────────────────────────────────────────
 (async function loadTunnelUrl() {
   try {
@@ -378,19 +389,35 @@ function connect() {
     autoConnect: false,
     reconnection: true,
     reconnectionAttempts: Infinity,
-    reconnectionDelay: 2000,
-    reconnectionDelayMax: 8000,
+    reconnectionDelay: 1000,
+    reconnectionDelayMax: 5000,
     timeout: 60000,
+    transports: ['websocket', 'polling'],  // WebSocket 우선, 실패 시 polling 폴백
   });
 
   socket.on('connect', () => {
     hideWakeOverlay();
-    log('서버 연결됨', 'sys');
     hideReconnectBanner();
     if (myRoomId && myPlayerId) {
       socket.emit('room:state', { roomId: myRoomId, playerId: myPlayerId }, (res) => {
-        if (res?.ok) { gameState = res.data; renderGame(); }
+        if (res?.ok) {
+          gameState = res.data;
+          // 게임 화면이 아직 표시 중이면 renderGame만, 아니면 enterGame도
+          if (document.getElementById('game').style.display !== 'none') {
+            renderGame();
+          } else {
+            enterGame();
+            renderGame();
+          }
+          log('재연결됨', 'sys');
+        } else {
+          // 방이 사라진 경우 세션 초기화
+          sessionStorage.removeItem('diceSession');
+          myPlayerId = myRoomId = null;
+        }
       });
+    } else {
+      log('서버 연결됨', 'sys');
     }
   });
 
@@ -430,6 +457,26 @@ function connect() {
   socket.connect();
 }
 
+// 모바일 화면 복귀 시 연결 상태 확인 및 강제 재연결
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && socket) {
+    if (!socket.connected) {
+      socket.connect();
+    } else if (myRoomId && myPlayerId) {
+      // 연결은 살아있지만 상태가 오래됐을 수 있으므로 동기화
+      socket.emit('room:state', { roomId: myRoomId, playerId: myPlayerId }, (res) => {
+        if (res?.ok) { gameState = res.data; renderGame(); }
+      });
+    }
+  }
+});
+
+// 페이지 로드 시 이전 세션 자동 재연결 (모바일 새로고침 대응)
+if (myRoomId && myPlayerId) {
+  enterGame();
+  connect();
+}
+
 // ─── 로비 버튼 ────────────────────────────────────────────────────────────────
 document.getElementById('create-btn').onclick = () => {
   const nickname = document.getElementById('nick-input').value.trim();
@@ -441,6 +488,7 @@ document.getElementById('create-btn').onclick = () => {
     myRoomId   = res.data.roomId;
     isHost     = true;
     gameState  = res.data.state;
+    sessionStorage.setItem('diceSession', JSON.stringify({ pid: myPlayerId, rid: myRoomId, host: true }));
     enterGame();
     renderGame();
     log(`방 생성됨 — 코드: ${myRoomId}`, 'sys');
@@ -458,6 +506,7 @@ document.getElementById('join-btn').onclick = () => {
     myPlayerId = res.data.playerId;
     myRoomId   = roomId;
     gameState  = res.data.state;
+    sessionStorage.setItem('diceSession', JSON.stringify({ pid: myPlayerId, rid: myRoomId, host: false }));
     enterGame();
     renderGame();
     log(`방 ${roomId} 입장 완료`, 'sys');
@@ -636,6 +685,7 @@ function renderActions(s) {
       replay.onclick = () => {
         socket.emit('game:reset', {}, (res) => {
           if (!res.ok) log('리셋 실패: ' + res.msg, 'err');
+          else sessionStorage.removeItem('diceSession');
         });
       };
       if (!document.getElementById('replay-btn')) {
@@ -655,6 +705,15 @@ function doBet(pip, diceType, count) {
   });
 }
 
+function doPass() {
+  socket.emit('turn:pass', {}, (res) => {
+    if (!res.ok) { log(res.msg, 'err'); return; }
+    currentRoll = null;
+    document.getElementById('pip-choice').style.display = 'none';
+    log('이번 턴 패스');
+  });
+}
+
 function buildPipButtons(roll) {
   const c = document.getElementById('pip-btns');
   c.innerHTML = '';
@@ -666,14 +725,13 @@ function buildPipButtons(roll) {
     const white = roll.whitePips[pip] || 0;
     if (own > 0 || white > 0) hasAny = true;
 
-    // 일반 주사위 버튼 — 0개면 비활성화
+    // 일반 주사위 버튼 — 0개면 클릭 시 패스
     {
       const btn = document.createElement('button');
       btn.className = 'pip-btn';
-      btn.disabled  = own === 0;
       btn.innerHTML = `<strong>${pip}번</strong><br>
         <small>🎲 <span class="dice-own">${own}개</span></small>`;
-      if (own > 0) btn.onclick = () => doBet(pip, 'own', own);
+      btn.onclick = own > 0 ? () => doBet(pip, 'own', own) : () => doPass();
       c.appendChild(btn);
     }
 
@@ -682,16 +740,21 @@ function buildPipButtons(roll) {
       const btn = document.createElement('button');
       btn.className       = 'pip-btn';
       btn.style.borderColor = '#3a6a9a';
-      btn.disabled        = white === 0;
       btn.innerHTML       = `<strong>${pip}번</strong><br>
         <small><span class="dice-white">⬜ 흰${white}개</span></small>`;
-      if (white > 0) btn.onclick = () => doBet(pip, 'white', white);
+      btn.onclick = white > 0 ? () => doBet(pip, 'white', white) : () => doPass();
       c.appendChild(btn);
     }
   }
 
   if (!hasAny) {
-    c.innerHTML = '<span style="color:#666;font-size:.85rem">배팅할 주사위가 없습니다</span>';
+    // 배팅할 주사위가 전혀 없는 경우 패스 버튼만 표시
+    const btn = document.createElement('button');
+    btn.className   = 'pip-btn';
+    btn.style.borderColor = '#555';
+    btn.innerHTML   = '<strong>패스</strong><br><small style="color:#888">주사위 없음</small>';
+    btn.onclick     = () => doPass();
+    c.appendChild(btn);
   }
 }
 

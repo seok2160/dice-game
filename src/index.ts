@@ -24,9 +24,9 @@ app.get('*', (_req, res) =>
 const io = new Server(server, {
   maxHttpBufferSize: 64 * 1024,
   cors: { origin: '*' },
-  pingTimeout: 30000,
-  pingInterval: 10000,
-  connectTimeout: 45000,
+  pingTimeout:    60000,  // 모바일 백그라운드 전환 대응 (기본 20s → 60s)
+  pingInterval:   25000,  // 배터리 절약 겸 안정성 (기본 25s 유지)
+  connectTimeout: 60000,
 });
 
 const store     = new MemoryStore();
