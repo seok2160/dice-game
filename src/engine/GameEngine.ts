@@ -236,6 +236,26 @@ export function getWinner(state: GameState): string {
   return sorted[0].nickname;
 }
 
+export interface WinnerDetails {
+  isDraw: boolean;
+  mode: GameConfig['mode'];
+  winners: Player[];
+  teamMoneys?: { A: number; B: number };
+}
+
+export function getWinnerDetails(state: GameState): WinnerDetails {
+  if (state.config.mode === '2v2') {
+    const teamA = state.players.filter(p => p.team === 'A').reduce((s, p) => s + p.money, 0);
+    const teamB = state.players.filter(p => p.team === 'B').reduce((s, p) => s + p.money, 0);
+    if (teamA === teamB) return { isDraw: true, mode: '2v2', winners: [], teamMoneys: { A: teamA, B: teamB } };
+    const winTeam = teamA > teamB ? 'A' : 'B';
+    return { isDraw: false, mode: '2v2', winners: state.players.filter(p => p.team === winTeam), teamMoneys: { A: teamA, B: teamB } };
+  }
+  const sorted = [...state.players].sort((a, b) => b.money - a.money);
+  if (sorted[0].money === sorted[1]?.money) return { isDraw: true, mode: 'individual', winners: [] };
+  return { isDraw: false, mode: 'individual', winners: [sorted[0]] };
+}
+
 // ─── views ───────────────────────────────────────────────────────────────────
 
 /** 모든 클라이언트에 브로드캐스트 — currentRoll 제거 */
