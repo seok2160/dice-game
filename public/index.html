@@ -88,6 +88,7 @@ body { font-family: 'Segoe UI', sans-serif; background: #1a1a2e; color: #eee; mi
 #pip-choice { display: none; margin-top: 12px; }
 #pip-choice p { margin-bottom: 10px; color: #ccc; font-size: .88rem; }
 .pip-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.pip-col  { display: flex; flex-direction: column; gap: 4px; }
 .pip-btn { padding: 10px 14px; border-radius: 8px; border: 2px solid #444; background: #1a1a2e;
   color: #eee; font-size: .9rem; cursor: pointer; text-align: center; transition: border-color .15s; }
 .pip-btn:hover:not(:disabled) { border-color: #e94560; color: #e94560; }
@@ -800,28 +801,31 @@ function buildPipButtons(roll) {
     const white = roll.whitePips[pip] || 0;
     if (own > 0 || white > 0) hasAny = true;
 
-    // 일반 주사위 버튼 — 0개면 비활성
-    {
-      const btn = document.createElement('button');
-      btn.className = 'pip-btn';
-      btn.disabled  = own === 0;
-      btn.innerHTML = `<strong>${pip}번</strong><br>
-        <small>🎲 <span class="dice-own">${own}개</span></small>`;
-      if (own > 0) btn.onclick = () => doBet(pip, 'own', own);
-      c.appendChild(btn);
+    const col = document.createElement('div');
+    col.className = 'pip-col';
+
+    // 위: 일반 주사위 버튼 — 0개면 비활성
+    const ownBtn = document.createElement('button');
+    ownBtn.className = 'pip-btn';
+    ownBtn.disabled  = own === 0;
+    ownBtn.innerHTML = `<strong>${pip}번</strong><br>
+      <small>🎲 <span class="dice-own">${own}개</span></small>`;
+    if (own > 0) ownBtn.onclick = () => doBet(pip, 'own', own);
+    col.appendChild(ownBtn);
+
+    // 아래: 흰색 주사위 버튼 — 흰 주사위가 있을 때만 컬럼에 추가
+    if (hasWhite) {
+      const wBtn = document.createElement('button');
+      wBtn.className       = 'pip-btn';
+      wBtn.style.borderColor = '#3a6a9a';
+      wBtn.disabled        = white === 0;
+      wBtn.innerHTML       = `<strong>${pip}번</strong><br>
+        <small><span class="dice-white">⬜ 흰${white}개</span></small>`;
+      if (white > 0) wBtn.onclick = () => doBet(pip, 'white', white);
+      col.appendChild(wBtn);
     }
 
-    // 흰색 주사위 버튼 — 흰 주사위를 한 개라도 굴렸을 때만 표시
-    if (hasWhite) {
-      const btn = document.createElement('button');
-      btn.className       = 'pip-btn';
-      btn.style.borderColor = '#3a6a9a';
-      btn.disabled        = white === 0;
-      btn.innerHTML       = `<strong>${pip}번</strong><br>
-        <small><span class="dice-white">⬜ 흰${white}개</span></small>`;
-      if (white > 0) btn.onclick = () => doBet(pip, 'white', white);
-      c.appendChild(btn);
-    }
+    c.appendChild(col);
   }
 
   if (!hasAny) {
