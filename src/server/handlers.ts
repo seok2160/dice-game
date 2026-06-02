@@ -329,6 +329,20 @@ export function registerHandlers(io: Server, store: MemoryStore): TurnScheduler 
       } catch (e) { errAck(ack, e); }
     });
 
+    // bot:remove ──────────────────────────────────────────────────────────────
+    socket.on('bot:remove', async (_: unknown, ack) => {
+      const { roomId, playerId } = socket.data;
+      if (!roomId) return ack?.({ ok: false, code: 'NOT_IN_ROOM', msg: 'Join a room first' });
+      try {
+        const next = await store.update(roomId, (s) => {
+          if (s.meta.hostId !== playerId) throw new Engine.GameError('NOT_HOST', 'Only host can remove bots');
+          return Engine.removeBot(s);
+        });
+        io.to(roomId).emit('state:update', Engine.publicView(next));
+        ack?.({ ok: true });
+      } catch (e) { errAck(ack, e); }
+    });
+
     // room:state (재접속 후 상태 동기화) ─────────────────────────────────────
     socket.on('room:state', async ({ roomId: rid, playerId: pid }: { roomId: string; playerId?: string }, ack) => {
       try {

@@ -319,6 +319,7 @@ body { font-family: 'Segoe UI', sans-serif; background: #1a1a2e; color: #eee; mi
       </div>
       <div class="btn-row">
         <button class="btn-cfg" id="add-bot-btn" onclick="addBot()">🤖 AI 추가</button>
+        <button class="btn-cfg" id="rem-bot-btn" onclick="removeBot()" style="display:none">➖ AI 제거</button>
         <button class="btn-cfg" id="apply-config">설정 적용</button>
         <button class="btn-start" id="start-btn">▶ 게임 시작!</button>
       </div>
@@ -586,6 +587,11 @@ function addBot() {
     if (!res.ok) log('AI 추가 실패: ' + res.msg, 'err');
   });
 }
+function removeBot() {
+  socket.emit('bot:remove', {}, (res) => {
+    if (!res.ok) log('AI 제거 실패: ' + res.msg, 'err');
+  });
+}
 
 // ─── 설정 / 시작 ──────────────────────────────────────────────────────────────
 document.getElementById('apply-config').onclick = () => {
@@ -713,7 +719,9 @@ function renderActions(s) {
     if (isHost) {
       title.textContent      = '⚙️  게임 설정 후 시작하세요';
       cfgPanel.style.display = 'block';
+      const botCount = s.players.filter(p => p.isBot).length;
       document.getElementById('add-bot-btn').style.display = s.players.length >= 4 ? 'none' : '';
+      document.getElementById('rem-bot-btn').style.display = botCount > 0 ? '' : 'none';
     } else {
       title.textContent = '⌛ 방장이 게임을 시작할 때까지 대기 중...';
     }
