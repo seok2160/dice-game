@@ -45,6 +45,13 @@ export function addBot(state: GameState, botId: PlayerId): GameState {
   return { ...state, players: [...state.players, player] };
 }
 
+export function removeBot(state: GameState): GameState {
+  if (state.phase !== 'WAITING') throw new GameError('GAME_STARTED', 'Game already started');
+  const lastBot = [...state.players].reverse().find(p => p.isBot);
+  if (!lastBot) throw new GameError('NO_BOT', 'No bot to remove');
+  return { ...state, players: state.players.filter(p => p.id !== lastBot.id) };
+}
+
 export function setConfig(state: GameState, config: Partial<GameConfig>): GameState {
   if (state.phase !== 'WAITING') throw new GameError('GAME_STARTED', 'Game already started');
   const next = { ...state, config: { ...state.config, ...config } };
