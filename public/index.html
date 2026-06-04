@@ -215,6 +215,48 @@ body { font-family: 'Segoe UI', sans-serif; background: #1a1a2e; color: #eee; mi
   transition: opacity .15s;
 }
 #winner-card .w-close:hover { opacity: .85; }
+
+/* ── 룰 모달 ── */
+#rules-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,.85); z-index: 600;
+  align-items: flex-start; justify-content: center;
+  padding: 24px 12px; overflow-y: auto;
+}
+#rules-overlay.show { display: flex; }
+#rules-card {
+  background: #12122a; border: 2px solid #2a2a6a;
+  border-radius: 16px; padding: 28px 28px 24px;
+  max-width: 560px; width: 100%;
+  animation: wCardIn .35s ease both;
+}
+#rules-card h2 { color: #e94560; font-size: 1.3rem; margin-bottom: 18px; text-align: center; }
+#rules-card h3 { color: #f0c040; font-size: .95rem; margin: 18px 0 8px; border-bottom: 1px solid #2a2a4a; padding-bottom: 4px; }
+#rules-card p, #rules-card li { font-size: .88rem; color: #ccc; line-height: 1.7; margin: 4px 0; }
+#rules-card ul { padding-left: 18px; }
+#rules-card .rule-tag {
+  display: inline-block; padding: 1px 8px; border-radius: 10px;
+  font-size: .76rem; font-weight: bold; margin-right: 4px; vertical-align: middle;
+}
+#rules-card .tag-red   { background: #e94560; color: #fff; }
+#rules-card .tag-gold  { background: #f0c040; color: #1a1a1a; }
+#rules-card .tag-blue  { background: #2980b9; color: #fff; }
+#rules-card .tag-white { background: #3a6a9a; color: #7ecef5; border: 1px solid #5a9aca; }
+#rules-card .rule-close {
+  width: 100%; margin-top: 22px; padding: 11px;
+  background: #e94560; color: #fff; border: none;
+  border-radius: 10px; font-size: 1rem; font-weight: bold;
+  cursor: pointer; transition: opacity .15s;
+}
+#rules-card .rule-close:hover { opacity: .85; }
+
+/* 룰 버튼 (로비·게임 공통) */
+.rules-btn {
+  padding: 6px 16px; border-radius: 20px; border: 1px solid #444;
+  background: transparent; color: #aaa; font-size: .82rem;
+  cursor: pointer; transition: border-color .15s, color .15s;
+}
+.rules-btn:hover { border-color: #e94560; color: #e94560; }
 </style>
 </head>
 <body>
@@ -230,12 +272,65 @@ body { font-family: 'Segoe UI', sans-serif; background: #1a1a2e; color: #eee; mi
     <button id="join-btn">입장</button>
   </div>
   <div id="lobby-err" style="color:#e94560;font-size:.85rem;min-height:18px;"></div>
+  <button class="rules-btn" onclick="openRules()">📖 게임 룰 보기</button>
   <div id="tunnel-box" style="display:none;margin-top:18px;background:#16213e;border:1px solid #2a5298;
        border-radius:10px;padding:12px 16px;width:280px;text-align:center;">
     <div style="font-size:.75rem;color:#aaa;margin-bottom:6px;">🌐 외부 접속용 공개 URL</div>
     <div id="tunnel-url" style="font-size:.85rem;color:#5bc8f5;word-break:break-all;cursor:pointer;"
          title="클릭해서 복사" onclick="copyTunnel()"></div>
     <div style="font-size:.7rem;color:#666;margin-top:5px;">클릭해서 복사 · 이 주소를 친구에게 공유하세요</div>
+  </div>
+</div>
+
+<!-- 룰 모달 -->
+<div id="rules-overlay" onclick="if(event.target===this)closeRules()">
+  <div id="rules-card">
+    <h2>📖 게임 룰</h2>
+
+    <h3>🎯 게임 목표</h3>
+    <p>여러 라운드에 걸쳐 주사위를 굴려 보드의 슬롯에 배팅하고, 최종적으로 가장 많은 돈을 모은 플레이어(또는 팀)가 승리합니다.</p>
+
+    <h3>🎲 기본 진행</h3>
+    <ul>
+      <li>각 플레이어는 라운드마다 <strong>일반 주사위 8개</strong>를 가집니다.</li>
+      <li>자신의 턴이 되면 주사위를 굴리고, 나온 눈 중 하나를 선택해 해당 슬롯에 <strong>그 눈의 주사위 전부</strong>를 배팅합니다.</li>
+      <li>모든 플레이어가 주사위를 다 소진하면 라운드가 끝나고 <strong>정산</strong>이 시작됩니다.</li>
+    </ul>
+
+    <h3>🏦 보드와 슬롯</h3>
+    <ul>
+      <li>보드에는 <strong>1~6번</strong> 슬롯이 있고, 각 슬롯에는 지폐가 배치되어 있습니다.</li>
+      <li>같은 슬롯에 배팅한 플레이어 중 <strong>가장 많은 주사위</strong>를 배팅한 사람이 지폐를 가져갑니다.</li>
+      <li>지폐는 큰 금액부터 1등, 2등, 3등 순으로 분배됩니다.</li>
+    </ul>
+
+    <h3>⚖️ 동률 탈락 규칙</h3>
+    <ul>
+      <li>같은 슬롯에 <strong>동일한 수</strong>의 주사위를 배팅한 플레이어는 <strong>모두 탈락</strong>합니다.</li>
+      <li>예: A·B가 각 3개, C가 2개 배팅 → A·B 탈락, C가 단독 1등.</li>
+    </ul>
+
+    <h3>⬜ 흰색 주사위 (선택 규칙)</h3>
+    <ul>
+      <li>설정에서 활성화하면 <span class="rule-tag tag-white">⬜ 흰색</span> 공용 주사위가 추가됩니다 (2인 4개 / 3·4인 2개).</li>
+      <li>흰색 주사위로 배팅할 수 있지만, <strong>흰색이 1등</strong>을 차지하면 해당 슬롯의 지폐가 <strong>전부 은행으로 환수</strong>됩니다.</li>
+      <li>흰색이 2등 이하일 때는 그 순위의 지폐가 은행으로 환수됩니다.</li>
+    </ul>
+
+    <h3>👥 팀전 (2v2)</h3>
+    <ul>
+      <li>4명을 <span class="rule-tag tag-blue">A팀</span> / <span class="rule-tag tag-red">B팀</span>으로 나눠 진행합니다.</li>
+      <li>턴 순서는 A-B-A-B 교차로 진행됩니다.</li>
+      <li>라운드 종료 시 팀원 합산 금액이 더 많은 팀이 승리합니다.</li>
+    </ul>
+
+    <h3>⏱️ 턴 제한시간</h3>
+    <ul>
+      <li>설정한 시간 내에 배팅하지 않으면 <strong>자동으로 최적 배팅</strong>이 처리됩니다.</li>
+      <li>굴린 결과에 배팅 가능한 주사위가 없으면 자동 패스됩니다.</li>
+    </ul>
+
+    <button class="rule-close" onclick="closeRules()">닫기</button>
   </div>
 </div>
 
@@ -263,6 +358,7 @@ body { font-family: 'Segoe UI', sans-serif; background: #1a1a2e; color: #eee; mi
           style="display:none;background:#16213e;border:1px solid #2a5298;padding:4px 10px;
                  border-radius:20px;font-size:0.8rem;cursor:pointer;color:#5bc8f5;">🌐 URL 복사</span>
     <span class="round-info" id="round-label">대기 중</span>
+    <button class="rules-btn" onclick="openRules()" style="margin-left:auto">📖 룰</button>
   </div>
   <div id="reconnect-banner" style="display:none;background:#7d2f2f;color:#ffb3b3;
        text-align:center;padding:8px;font-size:.85rem;border-radius:6px;margin-bottom:8px;">
@@ -1057,6 +1153,10 @@ function closeWinnerOverlay() {
   document.getElementById('winner-overlay').classList.remove('show');
   stopConfetti();
 }
+
+// ─── 룰 모달 ─────────────────────────────────────────────────────────────────
+function openRules()  { document.getElementById('rules-overlay').classList.add('show'); }
+function closeRules() { document.getElementById('rules-overlay').classList.remove('show'); }
 </script>
 </body>
 </html>
