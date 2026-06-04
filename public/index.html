@@ -6,149 +6,399 @@
 <title>Dice Board Game</title>
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap');
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'Segoe UI', sans-serif; background: #1a1a2e; color: #eee; min-height: 100vh; }
+body {
+  font-family: 'Noto Sans KR', 'Segoe UI', sans-serif;
+  background: #0b1e10;
+  color: #e8dcc8;
+  min-height: 100vh;
+  background-image:
+    radial-gradient(ellipse at 20% 20%, rgba(30,80,40,.35) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 80%, rgba(20,60,30,.3) 0%, transparent 60%);
+}
 
-/* ── 로비 ── */
-#lobby { display: flex; flex-direction: column; align-items: center; justify-content: center;
-         min-height: 100vh; gap: 12px; }
-#lobby h1 { font-size: 2rem; color: #e94560; margin-bottom: 8px; }
-#lobby input, #lobby select {
-  padding: 10px 14px; border-radius: 8px; border: 1px solid #444;
-  background: #16213e; color: #eee; font-size: 1rem; width: 280px; }
-#lobby > button { padding: 10px 28px; border-radius: 8px; border: none;
-  background: #e94560; color: #fff; font-size: 1rem; cursor: pointer; width: 280px; }
-#lobby > button:hover { background: #c73652; }
-.sep { color: #666; font-size: 0.85rem; }
-.join-row { display: flex; gap: 8px; width: 280px; }
+/* ══════════════════════════════════════════════════
+   로비
+══════════════════════════════════════════════════ */
+#lobby {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; min-height: 100vh; gap: 12px;
+  padding: 20px;
+}
+#lobby h1 {
+  font-size: 2.4rem; font-weight: 900;
+  color: #d4a843;
+  text-shadow: 0 2px 16px rgba(212,168,67,.5);
+  margin-bottom: 6px; letter-spacing: .04em;
+}
+#lobby .subtitle { color: #7a9e7a; font-size: .9rem; margin-bottom: 14px; }
+#lobby input {
+  padding: 11px 16px; border-radius: 10px;
+  border: 1px solid #3a6a3a;
+  background: #0f2918; color: #e8dcc8; font-size: 1rem; width: 300px;
+  outline: none; transition: border-color .2s;
+}
+#lobby input:focus { border-color: #d4a843; }
+#lobby > button {
+  padding: 12px 28px; border-radius: 10px; border: none;
+  background: linear-gradient(135deg, #c8922a, #d4a843);
+  color: #1a1008; font-size: 1rem; font-weight: 700; cursor: pointer;
+  width: 300px; transition: opacity .15s, transform .1s;
+  box-shadow: 0 4px 14px rgba(212,168,67,.35);
+}
+#lobby > button:hover { opacity: .9; transform: translateY(-1px); }
+.sep { color: #3a6a3a; font-size: .85rem; letter-spacing: .1em; }
+.join-row { display: flex; gap: 8px; width: 300px; }
 .join-row input { flex: 1 1 0; min-width: 0; }
-.join-row button { flex: 0 0 70px; padding: 10px 0; border-radius: 8px; border: none;
-  background: #e94560; color: #fff; font-size: 1rem; cursor: pointer; white-space: nowrap; }
-.join-row button:hover { background: #c73652; }
+.join-row button {
+  flex: 0 0 72px; padding: 11px 0; border-radius: 10px; border: none;
+  background: linear-gradient(135deg, #c8922a, #d4a843);
+  color: #1a1008; font-size: .95rem; font-weight: 700; cursor: pointer;
+  transition: opacity .15s;
+}
+.join-row button:hover { opacity: .88; }
 
-/* ── 게임 ── */
-#game { display: none; padding: 16px; max-width: 1200px; margin: 0 auto; }
-.top-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap; }
-.top-bar h2 { font-size: 1.2rem; color: #e94560; }
-.room-id { background: #16213e; border: 1px solid #444; padding: 4px 12px;
-  border-radius: 20px; font-size: 0.85rem; cursor: pointer; }
-.room-id:hover { border-color: #e94560; }
-.round-info { margin-left: auto; font-size: 0.9rem; color: #aaa; }
+/* ══════════════════════════════════════════════════
+   게임 공통 레이아웃
+══════════════════════════════════════════════════ */
+#game { display: none; padding: 14px 16px; max-width: 1100px; margin: 0 auto; }
 
-#timer-bar { width: 100%; height: 5px; background: #333; border-radius: 3px; margin-bottom: 16px; overflow: hidden; }
-#timer-fill { height: 100%; background: #e94560; transition: width 0.5s linear; width: 100%; }
+.top-bar {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 10px; flex-wrap: wrap;
+  padding: 8px 14px;
+  background: rgba(10,30,14,.7);
+  border: 1px solid #2a5a2a;
+  border-radius: 12px;
+}
+.top-bar h2 {
+  font-size: 1.15rem; font-weight: 900; color: #d4a843;
+  text-shadow: 0 0 10px rgba(212,168,67,.4);
+}
+.room-id {
+  background: #0f2918; border: 1px solid #3a6a3a;
+  padding: 4px 12px; border-radius: 20px; font-size: .82rem;
+  cursor: pointer; color: #9ac89a; transition: border-color .15s;
+}
+.room-id:hover { border-color: #d4a843; color: #d4a843; }
+.round-info { font-size: .88rem; color: #9ac89a; }
 
-/* ── 플레이어 카드 ── */
-#players { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
-.player-card { background: #16213e; border: 2px solid #333; border-radius: 10px;
-  padding: 10px 14px; min-width: 130px; transition: border-color .2s, box-shadow .2s; }
-.player-card.active { box-shadow: 0 0 14px rgba(233,69,96,.4); }
-.pname  { font-weight: bold; font-size: .95rem; }
-.pmoney { color: #f0c040; font-size: 1.05rem; margin-top: 3px; }
-.pdice  { font-size: .78rem; color: #aaa; margin-top: 2px; }
-.ptag   { font-size: .68rem; padding: 1px 6px; border-radius: 10px;
-  background: #e94560; color: #fff; margin-top: 4px; display: inline-block; }
+/* 타이머 */
+#timer-bar {
+  width: 100%; height: 6px;
+  background: #0f2918; border-radius: 3px;
+  margin-bottom: 14px; overflow: hidden;
+  border: 1px solid #1a4a1a;
+}
+#timer-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #27ae60, #d4a843, #c0392b);
+  transition: width 0.5s linear; width: 100%;
+}
 
-/* ── 보드 ── */
-#board { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-bottom: 18px; }
-.slot { background: #16213e; border: 1px solid #333; border-radius: 10px; padding: 10px; min-height: 130px; }
-.slot h3 { text-align: center; font-size: .8rem; color: #aaa; margin-bottom: 6px; }
-.bills { display: flex; flex-wrap: wrap; gap: 3px; margin-bottom: 6px; min-height: 28px; }
-.bill  { background: #2d5a27; color: #8fce81; padding: 2px 5px; border-radius: 4px; font-size: .72rem; }
-.bets-area { border-top: 1px solid #2a2a4a; padding-top: 5px; }
-.bet-row { display: flex; align-items: center; gap: 5px; margin-top: 3px; }
+/* 재연결 배너 */
+#reconnect-banner {
+  background: rgba(120,40,30,.8); color: #ffb3b3;
+  text-align: center; padding: 8px; font-size: .85rem;
+  border-radius: 8px; margin-bottom: 10px;
+  border: 1px solid #8b3030;
+}
+
+/* ══════════════════════════════════════════════════
+   플레이어 카드
+══════════════════════════════════════════════════ */
+#players { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+.player-card {
+  background: linear-gradient(145deg, #0f2918, #0b1e10);
+  border: 2px solid #2a4a2a; border-radius: 12px;
+  padding: 10px 14px; min-width: 136px;
+  transition: border-color .2s, box-shadow .2s, transform .15s;
+  position: relative; overflow: hidden;
+}
+.player-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: var(--pc, #444); opacity: .6;
+}
+.player-card.active {
+  border-color: var(--pc, #d4a843);
+  box-shadow: 0 0 18px rgba(212,168,67,.25), inset 0 0 20px rgba(212,168,67,.04);
+  transform: translateY(-2px);
+}
+.pname  { font-weight: 700; font-size: .92rem; }
+.pmoney { color: #d4a843; font-size: 1rem; margin-top: 4px; font-weight: 700; }
+.pdice  { font-size: .76rem; color: #7a9e7a; margin-top: 3px; }
+.ptag   {
+  font-size: .66rem; padding: 2px 7px; border-radius: 10px;
+  background: #c0392b; color: #fff; margin-top: 5px;
+  display: inline-block; font-weight: 700;
+}
+
+/* ══════════════════════════════════════════════════
+   보드 슬롯
+══════════════════════════════════════════════════ */
+#board { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-bottom: 14px; }
+.slot {
+  background: linear-gradient(160deg, #0f2918, #091810);
+  border: 1px solid #2a5a2a; border-radius: 12px;
+  padding: 10px 8px; min-height: 130px;
+  transition: border-color .2s;
+}
+.slot:hover { border-color: #3a7a3a; }
+.slot-header {
+  text-align: center; margin-bottom: 8px;
+}
+.slot-num {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; border-radius: 50%;
+  background: linear-gradient(135deg, #1a4a24, #0f2918);
+  border: 2px solid #3a7a3a;
+  font-size: .78rem; font-weight: 900; color: #9ac89a;
+}
+.bills { display: flex; flex-wrap: wrap; gap: 3px; margin-bottom: 7px; min-height: 26px; }
+.bill {
+  background: linear-gradient(135deg, #1a4a1a, #0f3a18);
+  color: #6fbe6f; padding: 2px 6px; border-radius: 5px;
+  font-size: .7rem; font-weight: 700;
+  border: 1px solid #2a6a2a;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.05);
+}
+.bets-area { border-top: 1px solid #1a4a1a; padding-top: 5px; }
+.bet-row { display: flex; align-items: center; gap: 5px; margin-top: 4px; }
 .bet-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
-.bet-lbl { font-size: .72rem; color: #ccc; }
+.bet-lbl { font-size: .7rem; color: #b8c8b8; }
 
-/* ── 액션 패널 ── */
-#action-panel { background: #16213e; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
-#action-title  { color: #aaa; font-size: .9rem; margin-bottom: 12px; }
-#roll-btn { padding: 11px 30px; background: #e94560; color: #fff; border: none;
-  border-radius: 8px; font-size: 1.05rem; cursor: pointer; }
-#roll-btn:hover:not(:disabled) { background: #c73652; }
-#roll-btn:disabled { background: #444; cursor: not-allowed; }
+/* ══════════════════════════════════════════════════
+   액션 패널
+══════════════════════════════════════════════════ */
+#action-panel {
+  background: linear-gradient(145deg, #0f2918, #0b1e10);
+  border: 1px solid #2a5a2a; border-radius: 14px;
+  padding: 16px 18px; margin-bottom: 14px;
+}
+#action-title { color: #9ac89a; font-size: .88rem; margin-bottom: 12px; }
 
-/* 설정 패널 (게임 화면 안) */
-#config-panel { display: none; margin-top: 14px; padding-top: 14px; border-top: 1px solid #2a2a4a; }
-#config-panel h4 { font-size: .9rem; color: #aaa; margin-bottom: 10px; }
+#roll-btn {
+  padding: 13px 36px;
+  background: linear-gradient(135deg, #1a7a3a, #27ae60);
+  color: #fff; border: none; border-radius: 10px;
+  font-size: 1.05rem; font-weight: 700; cursor: pointer;
+  box-shadow: 0 4px 16px rgba(39,174,96,.35);
+  transition: opacity .15s, transform .1s, box-shadow .15s;
+  position: relative; overflow: hidden;
+}
+#roll-btn::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(255,255,255,.1) 0%, transparent 100%);
+  border-radius: 10px;
+}
+#roll-btn:hover:not(:disabled) {
+  opacity: .92; transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(39,174,96,.5);
+}
+#roll-btn:active:not(:disabled) { transform: translateY(0); }
+#roll-btn:disabled { background: #1a3a1a; color: #4a6a4a; cursor: not-allowed; box-shadow: none; }
+
+/* 설정 패널 */
+#config-panel { display: none; margin-top: 14px; padding-top: 14px; border-top: 1px solid #1a4a1a; }
+#config-panel h4 { font-size: .88rem; color: #9ac89a; margin-bottom: 10px; }
 .cfg-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; margin-bottom: 12px; }
-.cfg-grid label { font-size: .8rem; color: #888; display: block; margin-bottom: 3px; }
-.cfg-grid select { width: 100%; padding: 6px 8px; border-radius: 6px; border: 1px solid #444;
-  background: #1a1a2e; color: #eee; font-size: .85rem; }
-.cfg-check { display: flex; align-items: center; gap: 8px; font-size: .85rem; color: #ccc; }
-.btn-row { display: flex; gap: 10px; }
-.btn-cfg  { padding: 9px 18px; border-radius: 8px; border: none; background: #2c3e6a; color: #eee;
-  font-size: .9rem; cursor: pointer; }
-.btn-cfg:hover { background: #3a4f8a; }
-.btn-start { padding: 9px 22px; border-radius: 8px; border: none; background: #27ae60; color: #fff;
-  font-size: .9rem; cursor: pointer; font-weight: bold; }
-.btn-start:hover { background: #219a52; }
+.cfg-grid label { font-size: .78rem; color: #7a9e7a; display: block; margin-bottom: 3px; }
+.cfg-grid select {
+  width: 100%; padding: 7px 10px; border-radius: 8px;
+  border: 1px solid #2a5a2a; background: #0b1e10; color: #e8dcc8; font-size: .84rem;
+  outline: none;
+}
+.cfg-grid select:focus { border-color: #d4a843; }
+.cfg-check { display: flex; align-items: center; gap: 8px; font-size: .84rem; color: #b8c8b8; }
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn-cfg {
+  padding: 9px 16px; border-radius: 8px; border: 1px solid #2a5a2a;
+  background: #0f2918; color: #9ac89a; font-size: .88rem; cursor: pointer;
+  transition: background .15s, border-color .15s;
+}
+.btn-cfg:hover { background: #1a3a22; border-color: #3a7a3a; }
+.btn-start {
+  padding: 9px 20px; border-radius: 8px; border: none;
+  background: linear-gradient(135deg, #c8922a, #d4a843);
+  color: #1a1008; font-size: .9rem; font-weight: 700; cursor: pointer;
+  box-shadow: 0 3px 10px rgba(212,168,67,.3);
+  transition: opacity .15s, transform .1s;
+}
+.btn-start:hover { opacity: .9; transform: translateY(-1px); }
 
 /* pip 선택 */
-#pip-choice { display: none; margin-top: 12px; }
-#pip-choice p { margin-bottom: 10px; color: #ccc; font-size: .88rem; }
+#pip-choice { display: none; margin-top: 14px; }
+#pip-choice > p { margin-bottom: 10px; color: #9ac89a; font-size: .86rem; }
 .pip-btns { display: flex; gap: 8px; flex-wrap: wrap; }
 .pip-col  { display: flex; flex-direction: column; gap: 4px; }
-.pip-btn { padding: 10px 14px; border-radius: 8px; border: 2px solid #444; background: #1a1a2e;
-  color: #eee; font-size: .9rem; cursor: pointer; text-align: center; transition: border-color .15s; }
-.pip-btn:hover:not(:disabled) { border-color: #e94560; color: #e94560; }
-.pip-btn:disabled { opacity: .3; cursor: not-allowed; }
-.dice-own   { color: #f0c040; font-weight: bold; }
-.dice-white { display: inline-block; background: #1a3a5a; color: #7ecef5;
+.pip-btn {
+  padding: 10px 13px; border-radius: 9px;
+  border: 2px solid #2a5a2a;
+  background: #0b1e10; color: #e8dcc8;
+  font-size: .88rem; cursor: pointer; text-align: center;
+  transition: border-color .15s, background .15s, transform .1s;
+  min-width: 70px;
+}
+.pip-btn:hover:not(:disabled) {
+  border-color: #d4a843; background: #102014;
+  transform: translateY(-2px);
+}
+.pip-btn:disabled { opacity: .28; cursor: not-allowed; }
+.dice-own   { color: #d4a843; font-weight: 700; }
+.dice-white { display: inline-block; background: #0a2a3a; color: #7ecef5;
               padding: 1px 6px; border-radius: 4px; font-size: .78em;
-              border: 1px solid #3a6a9a; margin-left: 2px; }
+              border: 1px solid #2a5a8a; }
 
-/* ── 로그 / 채팅 탭 ── */
-.tab-bar { display: flex; gap: 0; margin-bottom: 0; border-radius: 10px 10px 0 0; overflow: hidden; }
-.tab-btn { flex: 1; padding: 8px; background: #12122a; border: none; color: #888;
-  font-size: .85rem; cursor: pointer; transition: background .15s, color .15s; }
-.tab-btn.active { background: #0f0f23; color: #eee; font-weight: bold; }
-.tab-btn:hover:not(.active) { background: #1a1a3a; color: #ccc; }
-.tab-pane { display: none; background: #0f0f23; border-radius: 0 0 10px 10px; }
+/* ══════════════════════════════════════════════════
+   로그 / 채팅
+══════════════════════════════════════════════════ */
+.tab-bar { display: flex; border-radius: 10px 10px 0 0; overflow: hidden; }
+.tab-btn {
+  flex: 1; padding: 8px; border: none;
+  background: #091810; color: #4a7a4a;
+  font-size: .84rem; cursor: pointer; transition: background .15s, color .15s;
+}
+.tab-btn.active  { background: #0b1e10; color: #d4a843; font-weight: 700; }
+.tab-btn:hover:not(.active) { background: #0f2918; color: #9ac89a; }
+.tab-pane { display: none; background: #0b1e10; border-radius: 0 0 10px 10px;
+            border: 1px solid #1a4a1a; border-top: none; }
 .tab-pane.active { display: block; }
 
-#log { padding: 10px 14px; height: 140px; overflow-y: auto; font-size: .8rem; }
-#log p { margin: 2px 0; color: #888; line-height: 1.4; }
-#log p.sys { color: #5599ff; }
-#log p.win { color: #f0c040; font-weight: bold; }
-#log p.err { color: #e94560; }
+#log { padding: 10px 14px; height: 130px; overflow-y: auto; font-size: .78rem; }
+#log p { margin: 2px 0; color: #6a8e6a; line-height: 1.4; }
+#log p.sys { color: #5599cc; }
+#log p.win { color: #d4a843; font-weight: 700; }
+#log p.err { color: #c0392b; }
 
-/* 채팅 */
-#chat-msgs { height: 140px; overflow-y: auto; padding: 8px 12px; }
+#chat-msgs { height: 130px; overflow-y: auto; padding: 8px 12px; }
 .chat-msg { margin: 4px 0; font-size: .82rem; line-height: 1.45; word-break: break-all; }
-.chat-msg .chat-nick { font-weight: bold; margin-right: 5px; }
-.chat-msg .chat-time { color: #555; font-size: .72rem; margin-left: 4px; }
-.chat-input-row { display: flex; gap: 6px; padding: 8px 10px; border-top: 1px solid #1a1a3a; }
-#chat-input { flex: 1; background: #16213e; border: 1px solid #333; border-radius: 6px;
-  color: #eee; padding: 6px 10px; font-size: .85rem; outline: none; }
-#chat-input:focus { border-color: #e94560; }
-#chat-send { padding: 6px 14px; background: #e94560; color: #fff; border: none;
-  border-radius: 6px; cursor: pointer; font-size: .85rem; white-space: nowrap; }
-#chat-send:hover { background: #c73652; }
-#chat-badge { display: none; background: #e94560; color: #fff; border-radius: 10px;
-  font-size: .7rem; padding: 1px 6px; margin-left: 5px; vertical-align: middle; }
+.chat-msg .chat-nick { font-weight: 700; margin-right: 5px; }
+.chat-msg .chat-time { color: #3a5a3a; font-size: .72rem; margin-left: 4px; }
+.chat-input-row { display: flex; gap: 6px; padding: 8px 10px; border-top: 1px solid #1a3a1a; }
+#chat-input {
+  flex: 1; background: #091810; border: 1px solid #2a4a2a;
+  border-radius: 6px; color: #e8dcc8; padding: 7px 10px; font-size: .84rem; outline: none;
+}
+#chat-input:focus { border-color: #d4a843; }
+#chat-send {
+  padding: 6px 14px; background: #1a7a3a; color: #fff; border: none;
+  border-radius: 6px; cursor: pointer; font-size: .84rem; font-weight: 700;
+  transition: background .15s;
+}
+#chat-send:hover { background: #27ae60; }
+#chat-badge {
+  display: none; background: #c0392b; color: #fff; border-radius: 10px;
+  font-size: .7rem; padding: 1px 6px; margin-left: 5px; vertical-align: middle;
+}
 
-/* ── 우승자 오버레이 ── */
+/* ══════════════════════════════════════════════════
+   룰 / 버튼
+══════════════════════════════════════════════════ */
+.rules-btn {
+  padding: 5px 14px; border-radius: 20px;
+  border: 1px solid #2a5a2a; background: transparent;
+  color: #7a9e7a; font-size: .8rem; cursor: pointer;
+  transition: border-color .15s, color .15s;
+}
+.rules-btn:hover { border-color: #d4a843; color: #d4a843; }
+
+/* ══════════════════════════════════════════════════
+   주사위 굴리기 애니메이션 오버레이
+══════════════════════════════════════════════════ */
+#dice-roll-overlay {
+  display: none; position: fixed; inset: 0; z-index: 450;
+  background: rgba(5,14,8,.82);
+  align-items: center; justify-content: center; flex-direction: column;
+  gap: 20px;
+}
+#dice-roll-overlay.show { display: flex; }
+#dice-roll-overlay .roll-label {
+  font-size: 1rem; color: #9ac89a; letter-spacing: .06em;
+}
+
+/* 주사위 컨테이너 */
+.dice-stage {
+  display: flex; gap: 10px; flex-wrap: wrap;
+  justify-content: center; max-width: 320px;
+  perspective: 500px;
+}
+/* 개별 주사위 */
+.die-wrap {
+  width: 52px; height: 52px;
+  animation: dieShake var(--spd, .22s) ease-in-out infinite alternate;
+  animation-delay: var(--dl, 0s);
+}
+@keyframes dieShake {
+  0%   { transform: rotate(-18deg) scale(1.04); }
+  100% { transform: rotate(18deg)  scale(.96);  }
+}
+.die-wrap.settling {
+  animation: dieSettle .5s cubic-bezier(.22,1,.36,1) forwards;
+  animation-delay: var(--dl2, 0s);
+}
+@keyframes dieSettle {
+  0%   { transform: rotate(15deg) scale(1.1) translateY(-6px); }
+  60%  { transform: rotate(-4deg) scale(.96) translateY(2px); }
+  100% { transform: rotate(0deg)  scale(1)   translateY(0);   }
+}
+.die-face {
+  width: 52px; height: 52px;
+  background: linear-gradient(145deg, #fff, #e8e8e8);
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.8);
+  position: relative;
+  transition: background .3s;
+}
+.die-face.white-die {
+  background: linear-gradient(145deg, #d0eeff, #a8d8f8);
+  box-shadow: 0 4px 10px rgba(30,100,200,.4), inset 0 1px 0 rgba(255,255,255,.8);
+}
+/* 주사위 눈 (pip) */
+.pip {
+  position: absolute; width: 10px; height: 10px;
+  border-radius: 50%; background: #1a1a1a;
+}
+.white-die .pip { background: #1a4a8a; }
+/* pip 배치 - 각 숫자별 */
+.p1 .pip:nth-child(1) { top: 50%; left: 50%; transform: translate(-50%,-50%); }
+.p2 .pip:nth-child(1) { top: 18%; left: 50%; transform: translate(-50%,-50%); }
+.p2 .pip:nth-child(2) { top: 82%; left: 50%; transform: translate(-50%,-50%); }
+.p3 .pip:nth-child(1) { top: 18%; left: 80%; transform: translate(-50%,-50%); }
+.p3 .pip:nth-child(2) { top: 50%; left: 50%; transform: translate(-50%,-50%); }
+.p3 .pip:nth-child(3) { top: 82%; left: 20%; transform: translate(-50%,-50%); }
+.p4 .pip:nth-child(1) { top: 22%; left: 22%; transform: translate(-50%,-50%); }
+.p4 .pip:nth-child(2) { top: 22%; left: 78%; transform: translate(-50%,-50%); }
+.p4 .pip:nth-child(3) { top: 78%; left: 22%; transform: translate(-50%,-50%); }
+.p4 .pip:nth-child(4) { top: 78%; left: 78%; transform: translate(-50%,-50%); }
+.p5 .pip:nth-child(1) { top: 22%; left: 22%; transform: translate(-50%,-50%); }
+.p5 .pip:nth-child(2) { top: 22%; left: 78%; transform: translate(-50%,-50%); }
+.p5 .pip:nth-child(3) { top: 50%; left: 50%; transform: translate(-50%,-50%); }
+.p5 .pip:nth-child(4) { top: 78%; left: 22%; transform: translate(-50%,-50%); }
+.p5 .pip:nth-child(5) { top: 78%; left: 78%; transform: translate(-50%,-50%); }
+.p6 .pip:nth-child(1) { top: 22%; left: 22%; transform: translate(-50%,-50%); }
+.p6 .pip:nth-child(2) { top: 22%; left: 78%; transform: translate(-50%,-50%); }
+.p6 .pip:nth-child(3) { top: 50%; left: 22%; transform: translate(-50%,-50%); }
+.p6 .pip:nth-child(4) { top: 50%; left: 78%; transform: translate(-50%,-50%); }
+.p6 .pip:nth-child(5) { top: 78%; left: 22%; transform: translate(-50%,-50%); }
+.p6 .pip:nth-child(6) { top: 78%; left: 78%; transform: translate(-50%,-50%); }
+
+/* ══════════════════════════════════════════════════
+   우승자 오버레이
+══════════════════════════════════════════════════ */
 #winner-overlay {
   display: none; position: fixed; inset: 0;
-  background: rgba(0,0,0,.88);
-  z-index: 500; align-items: center; justify-content: center;
-  flex-direction: column;
+  background: rgba(0,0,0,.88); z-index: 500;
+  align-items: center; justify-content: center; flex-direction: column;
 }
 #winner-overlay.show { display: flex; }
-
-/* 파티클 캔버스 */
-#confetti-canvas {
-  position: fixed; inset: 0; pointer-events: none; z-index: 499;
-}
-
+#confetti-canvas { position: fixed; inset: 0; pointer-events: none; z-index: 499; }
 #winner-card {
   position: relative; z-index: 501;
-  background: linear-gradient(145deg, #1a1a3e, #0f0f28);
-  border: 3px solid #f0c040;
-  box-shadow: 0 0 60px rgba(240,192,64,.45), 0 0 120px rgba(240,192,64,.15);
-  border-radius: 20px;
-  padding: 40px 48px 32px;
+  background: linear-gradient(145deg, #0f2918, #091810);
+  border: 3px solid #d4a843;
+  box-shadow: 0 0 60px rgba(212,168,67,.4), 0 0 120px rgba(212,168,67,.12);
+  border-radius: 20px; padding: 40px 48px 32px;
   text-align: center; max-width: 460px; width: 92%;
   animation: wCardIn .5s cubic-bezier(.17,.67,.35,1.3) both;
 }
@@ -156,107 +406,68 @@ body { font-family: 'Segoe UI', sans-serif; background: #1a1a2e; color: #eee; mi
   from { transform: scale(.6) translateY(40px); opacity: 0; }
   to   { transform: scale(1)  translateY(0);    opacity: 1; }
 }
-
-/* 트로피 펄스 */
 #winner-card .w-trophy {
-  font-size: 4.5rem; line-height: 1;
+  font-size: 4.5rem; line-height: 1; display: block; margin-bottom: 4px;
   animation: trophyPulse 1.4s ease-in-out infinite;
-  display: block; margin-bottom: 4px;
 }
 @keyframes trophyPulse {
-  0%,100% { transform: scale(1);    filter: drop-shadow(0 0 6px #f0c040); }
-  50%      { transform: scale(1.12); filter: drop-shadow(0 0 18px #f0c040); }
+  0%,100% { transform: scale(1);    filter: drop-shadow(0 0 8px #d4a843); }
+  50%      { transform: scale(1.12); filter: drop-shadow(0 0 20px #d4a843); }
 }
-
-#winner-card .w-subtitle {
-  font-size: .85rem; letter-spacing: .12em; text-transform: uppercase;
-  color: #f0c040; opacity: .7; margin-bottom: 14px;
-}
-#winner-card .w-name {
-  font-size: 2.4rem; font-weight: 900; line-height: 1.15;
-  margin-bottom: 6px;
-  text-shadow: 0 2px 12px rgba(0,0,0,.6);
-}
-#winner-card .w-money {
-  font-size: 1.15rem; color: #f0c040; margin-bottom: 20px; font-weight: bold;
-}
-
-/* 순위표 */
-#winner-card .w-rankings {
-  border-top: 1px solid #2a2a5a; padding-top: 16px; margin-bottom: 22px;
-  text-align: left;
-}
-#winner-card .w-rank-row {
-  display: flex; align-items: center; gap: 10px;
-  padding: 6px 0; border-bottom: 1px solid #1a1a3a; font-size: .88rem;
-}
+#winner-card .w-subtitle { font-size: .82rem; letter-spacing: .12em; color: #d4a843; opacity: .7; margin-bottom: 14px; }
+#winner-card .w-name { font-size: 2.4rem; font-weight: 900; line-height: 1.15; margin-bottom: 6px; }
+#winner-card .w-money { font-size: 1.1rem; color: #d4a843; margin-bottom: 20px; font-weight: 700; }
+#winner-card .w-rankings { border-top: 1px solid #1a4a2a; padding-top: 16px; margin-bottom: 22px; text-align: left; }
+#winner-card .w-rank-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid #0f2918; font-size: .88rem; }
 #winner-card .w-rank-row:last-child { border-bottom: none; }
-#winner-card .w-rank-num {
-  width: 26px; height: 26px; border-radius: 50%; display: flex;
-  align-items: center; justify-content: center;
-  font-weight: bold; font-size: .8rem; flex-shrink: 0;
-}
-.rank-1 { background: #f0c040; color: #1a1a1a; }
+#winner-card .w-rank-num { width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: .8rem; flex-shrink: 0; }
+.rank-1 { background: #d4a843; color: #1a1008; }
 .rank-2 { background: #aaa;    color: #1a1a1a; }
 .rank-3 { background: #cd7f32; color: #fff; }
-.rank-n { background: #2a2a4a; color: #888; }
-#winner-card .w-rank-name { flex: 1; font-weight: bold; }
-#winner-card .w-rank-money { color: #f0c040; font-size: .85rem; }
-#winner-card .w-rank-tag {
-  font-size: .68rem; padding: 2px 7px; border-radius: 10px; font-weight: bold;
-}
-
-/* 버튼 */
+.rank-n { background: #1a3a1a; color: #7a9e7a; }
+#winner-card .w-rank-name { flex: 1; font-weight: 700; }
+#winner-card .w-rank-money { color: #d4a843; font-size: .85rem; }
+#winner-card .w-rank-tag { font-size: .68rem; padding: 2px 7px; border-radius: 10px; font-weight: 700; }
 #winner-card .w-close {
   width: 100%; padding: 12px;
-  background: linear-gradient(135deg, #e94560, #c73652);
-  color: #fff; border: none; border-radius: 10px;
-  font-size: 1.05rem; font-weight: bold; cursor: pointer;
-  transition: opacity .15s;
+  background: linear-gradient(135deg, #c8922a, #d4a843);
+  color: #1a1008; border: none; border-radius: 10px;
+  font-size: 1.05rem; font-weight: 700; cursor: pointer; transition: opacity .15s;
 }
 #winner-card .w-close:hover { opacity: .85; }
 
-/* ── 룰 모달 ── */
+/* ══════════════════════════════════════════════════
+   룰 모달
+══════════════════════════════════════════════════ */
 #rules-overlay {
   display: none; position: fixed; inset: 0;
-  background: rgba(0,0,0,.85); z-index: 600;
+  background: rgba(0,0,0,.88); z-index: 600;
   align-items: flex-start; justify-content: center;
   padding: 24px 12px; overflow-y: auto;
 }
 #rules-overlay.show { display: flex; }
 #rules-card {
-  background: #12122a; border: 2px solid #2a2a6a;
+  background: #0f2918; border: 2px solid #2a5a2a;
   border-radius: 16px; padding: 28px 28px 24px;
   max-width: 560px; width: 100%;
   animation: wCardIn .35s ease both;
 }
-#rules-card h2 { color: #e94560; font-size: 1.3rem; margin-bottom: 18px; text-align: center; }
-#rules-card h3 { color: #f0c040; font-size: .95rem; margin: 18px 0 8px; border-bottom: 1px solid #2a2a4a; padding-bottom: 4px; }
-#rules-card p, #rules-card li { font-size: .88rem; color: #ccc; line-height: 1.7; margin: 4px 0; }
+#rules-card h2 { color: #d4a843; font-size: 1.25rem; margin-bottom: 18px; text-align: center; }
+#rules-card h3 { color: #9ac89a; font-size: .93rem; margin: 16px 0 7px; border-bottom: 1px solid #1a4a1a; padding-bottom: 4px; }
+#rules-card p, #rules-card li { font-size: .86rem; color: #b8c8b8; line-height: 1.75; margin: 3px 0; }
 #rules-card ul { padding-left: 18px; }
-#rules-card .rule-tag {
-  display: inline-block; padding: 1px 8px; border-radius: 10px;
-  font-size: .76rem; font-weight: bold; margin-right: 4px; vertical-align: middle;
-}
-#rules-card .tag-red   { background: #e94560; color: #fff; }
-#rules-card .tag-gold  { background: #f0c040; color: #1a1a1a; }
+#rules-card .rule-tag { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: .76rem; font-weight: 700; margin-right: 4px; vertical-align: middle; }
+#rules-card .tag-red   { background: #c0392b; color: #fff; }
+#rules-card .tag-gold  { background: #d4a843; color: #1a1008; }
 #rules-card .tag-blue  { background: #2980b9; color: #fff; }
-#rules-card .tag-white { background: #3a6a9a; color: #7ecef5; border: 1px solid #5a9aca; }
+#rules-card .tag-white { background: #0a2a3a; color: #7ecef5; border: 1px solid #2a5a8a; }
 #rules-card .rule-close {
   width: 100%; margin-top: 22px; padding: 11px;
-  background: #e94560; color: #fff; border: none;
-  border-radius: 10px; font-size: 1rem; font-weight: bold;
-  cursor: pointer; transition: opacity .15s;
+  background: linear-gradient(135deg, #c8922a, #d4a843);
+  color: #1a1008; border: none; border-radius: 10px;
+  font-size: 1rem; font-weight: 700; cursor: pointer; transition: opacity .15s;
 }
 #rules-card .rule-close:hover { opacity: .85; }
-
-/* 룰 버튼 (로비·게임 공통) */
-.rules-btn {
-  padding: 6px 16px; border-radius: 20px; border: 1px solid #444;
-  background: transparent; color: #aaa; font-size: .82rem;
-  cursor: pointer; transition: border-color .15s, color .15s;
-}
-.rules-btn:hover { border-color: #e94560; color: #e94560; }
 </style>
 </head>
 <body>
@@ -264,21 +475,22 @@ body { font-family: 'Segoe UI', sans-serif; background: #1a1a2e; color: #eee; mi
 <!-- 로비 -->
 <div id="lobby">
   <h1>🎲 Dice Board</h1>
+  <p class="subtitle">주사위를 굴려 최고의 배팅을 하세요</p>
   <input id="nick-input" placeholder="닉네임 입력" maxlength="20">
-  <button id="create-btn">방 만들기</button>
+  <button id="create-btn">🏠 방 만들기</button>
   <div class="sep">─── 또는 ───</div>
   <div class="join-row">
     <input id="room-input" placeholder="방 코드 (8자리)" maxlength="8">
     <button id="join-btn">입장</button>
   </div>
-  <div id="lobby-err" style="color:#e94560;font-size:.85rem;min-height:18px;"></div>
+  <div id="lobby-err" style="color:#c0392b;font-size:.85rem;min-height:18px;"></div>
   <button class="rules-btn" onclick="openRules()">📖 게임 룰 보기</button>
-  <div id="tunnel-box" style="display:none;margin-top:18px;background:#16213e;border:1px solid #2a5298;
-       border-radius:10px;padding:12px 16px;width:280px;text-align:center;">
-    <div style="font-size:.75rem;color:#aaa;margin-bottom:6px;">🌐 외부 접속용 공개 URL</div>
+  <div id="tunnel-box" style="display:none;margin-top:18px;background:#0f2918;border:1px solid #2a5a2a;
+       border-radius:10px;padding:12px 16px;width:300px;text-align:center;">
+    <div style="font-size:.75rem;color:#7a9e7a;margin-bottom:6px;">🌐 외부 접속용 공개 URL</div>
     <div id="tunnel-url" style="font-size:.85rem;color:#5bc8f5;word-break:break-all;cursor:pointer;"
          title="클릭해서 복사" onclick="copyTunnel()"></div>
-    <div style="font-size:.7rem;color:#666;margin-top:5px;">클릭해서 복사 · 이 주소를 친구에게 공유하세요</div>
+    <div style="font-size:.7rem;color:#3a6a3a;margin-top:5px;">클릭해서 복사 · 이 주소를 친구에게 공유하세요</div>
   </div>
 </div>
 
@@ -286,52 +498,50 @@ body { font-family: 'Segoe UI', sans-serif; background: #1a1a2e; color: #eee; mi
 <div id="rules-overlay" onclick="if(event.target===this)closeRules()">
   <div id="rules-card">
     <h2>📖 게임 룰</h2>
-
     <h3>🎯 게임 목표</h3>
     <p>여러 라운드에 걸쳐 주사위를 굴려 보드의 슬롯에 배팅하고, 최종적으로 가장 많은 돈을 모은 플레이어(또는 팀)가 승리합니다.</p>
-
     <h3>🎲 기본 진행</h3>
     <ul>
       <li>각 플레이어는 라운드마다 <strong>일반 주사위 8개</strong>를 가집니다.</li>
       <li>자신의 턴이 되면 주사위를 굴리고, 나온 눈 중 하나를 선택해 해당 슬롯에 <strong>그 눈의 주사위 전부</strong>를 배팅합니다.</li>
       <li>모든 플레이어가 주사위를 다 소진하면 라운드가 끝나고 <strong>정산</strong>이 시작됩니다.</li>
     </ul>
-
     <h3>🏦 보드와 슬롯</h3>
     <ul>
       <li>보드에는 <strong>1~6번</strong> 슬롯이 있고, 각 슬롯에는 지폐가 배치되어 있습니다.</li>
       <li>같은 슬롯에 배팅한 플레이어 중 <strong>가장 많은 주사위</strong>를 배팅한 사람이 지폐를 가져갑니다.</li>
       <li>지폐는 큰 금액부터 1등, 2등, 3등 순으로 분배됩니다.</li>
     </ul>
-
     <h3>⚖️ 동률 탈락 규칙</h3>
     <ul>
       <li>같은 슬롯에 <strong>동일한 수</strong>의 주사위를 배팅한 플레이어는 <strong>모두 탈락</strong>합니다.</li>
       <li>예: A·B가 각 3개, C가 2개 배팅 → A·B 탈락, C가 단독 1등.</li>
     </ul>
-
     <h3>⬜ 흰색 주사위 (선택 규칙)</h3>
     <ul>
       <li>설정에서 활성화하면 <span class="rule-tag tag-white">⬜ 흰색</span> 공용 주사위가 추가됩니다 (2인 4개 / 3·4인 2개).</li>
       <li>흰색 주사위로 배팅할 수 있지만, <strong>흰색이 1등</strong>을 차지하면 해당 슬롯의 지폐가 <strong>전부 은행으로 환수</strong>됩니다.</li>
       <li>흰색이 2등 이하일 때는 그 순위의 지폐가 은행으로 환수됩니다.</li>
     </ul>
-
     <h3>👥 팀전 (2v2)</h3>
     <ul>
       <li>4명을 <span class="rule-tag tag-blue">A팀</span> / <span class="rule-tag tag-red">B팀</span>으로 나눠 진행합니다.</li>
       <li>턴 순서는 A-B-A-B 교차로 진행됩니다.</li>
       <li>라운드 종료 시 팀원 합산 금액이 더 많은 팀이 승리합니다.</li>
     </ul>
-
     <h3>⏱️ 턴 제한시간</h3>
     <ul>
       <li>설정한 시간 내에 배팅하지 않으면 <strong>자동으로 최적 배팅</strong>이 처리됩니다.</li>
       <li>굴린 결과에 배팅 가능한 주사위가 없으면 자동 패스됩니다.</li>
     </ul>
-
     <button class="rule-close" onclick="closeRules()">닫기</button>
   </div>
+</div>
+
+<!-- 주사위 굴리기 애니메이션 오버레이 -->
+<div id="dice-roll-overlay">
+  <div class="roll-label" id="roll-label-text">🎲 주사위를 굴리는 중...</div>
+  <div class="dice-stage" id="dice-stage"></div>
 </div>
 
 <!-- 파티클 캔버스 -->
@@ -355,13 +565,12 @@ body { font-family: 'Segoe UI', sans-serif; background: #1a1a2e; color: #eee; mi
     <h2>🎲 Dice Board</h2>
     <span class="room-id" id="room-label" title="클릭해서 코드 복사">방 코드: ——</span>
     <span id="share-btn" title="공개 URL 복사" onclick="copyPublicUrl()"
-          style="display:none;background:#16213e;border:1px solid #2a5298;padding:4px 10px;
+          style="display:none;background:#0f2918;border:1px solid #2a5a2a;padding:4px 10px;
                  border-radius:20px;font-size:0.8rem;cursor:pointer;color:#5bc8f5;">🌐 URL 복사</span>
     <span class="round-info" id="round-label">대기 중</span>
     <button class="rules-btn" onclick="openRules()" style="margin-left:auto">📖 룰</button>
   </div>
-  <div id="reconnect-banner" style="display:none;background:#7d2f2f;color:#ffb3b3;
-       text-align:center;padding:8px;font-size:.85rem;border-radius:6px;margin-bottom:8px;">
+  <div id="reconnect-banner" style="display:none;">
     ⚠️ 연결이 끊겼습니다. 재연결 중...
   </div>
   <div id="timer-bar"><div id="timer-fill"></div></div>
@@ -373,13 +582,11 @@ body { font-family: 'Segoe UI', sans-serif; background: #1a1a2e; color: #eee; mi
     <div id="action-title">연결 중...</div>
     <button id="roll-btn" disabled>🎲 주사위 굴리기</button>
 
-    <!-- pip 선택 (굴린 후) -->
     <div id="pip-choice">
       <p>배팅할 눈을 선택하세요 — 해당 눈의 주사위 전부가 배팅됩니다</p>
       <div class="pip-btns" id="pip-btns"></div>
     </div>
 
-    <!-- 방장 설정 (WAITING 단계에서만 표시) -->
     <div id="config-panel">
       <h4>⚙️ 게임 설정 (방장만 변경 가능)</h4>
       <div class="cfg-grid">
@@ -423,16 +630,13 @@ body { font-family: 'Segoe UI', sans-serif; background: #1a1a2e; color: #eee; mi
     </div>
   </div>
 
-  <!-- 로그 / 채팅 탭 -->
   <div class="tab-bar">
     <button class="tab-btn active" id="tab-log-btn" onclick="switchTab('log')">📋 로그</button>
     <button class="tab-btn" id="tab-chat-btn" onclick="switchTab('chat')">
       💬 채팅<span id="chat-badge"></span>
     </button>
   </div>
-  <div class="tab-pane active" id="tab-log">
-    <div id="log"></div>
-  </div>
+  <div class="tab-pane active" id="tab-log"><div id="log"></div></div>
   <div class="tab-pane" id="tab-chat">
     <div id="chat-msgs"></div>
     <div class="chat-input-row">
@@ -444,12 +648,11 @@ body { font-family: 'Segoe UI', sans-serif; background: #1a1a2e; color: #eee; mi
 </div>
 
 <script>
-// ─── 전역 상태 ────────────────────────────────────────────────────────────────
+// ─── 전역 상태 ─────────────────────────────────────────────────────────────────
 let socket, myPlayerId, myRoomId, isHost = false;
 let gameState = null, currentRoll = null;
 let timerInterval = null;
 
-// sessionStorage에서 세션 복원 (모바일 페이지 재로드 대응)
 (function restoreSession() {
   const saved = sessionStorage.getItem('diceSession');
   if (saved) {
@@ -460,7 +663,7 @@ let timerInterval = null;
   }
 })();
 
-// ─── 공개 URL 표시 ────────────────────────────────────────────────────────────
+// ─── 공개 URL ─────────────────────────────────────────────────────────────────
 (async function loadTunnelUrl() {
   try {
     const res  = await fetch('/api/tunnel-url');
@@ -471,64 +674,48 @@ let timerInterval = null;
       document.getElementById('tunnel-box').style.display = 'block';
       document.getElementById('share-btn').style.display  = 'inline-block';
     }
-  } catch { /* 로컬 전용 환경이면 무시 */ }
+  } catch {}
 })();
 
-function showReconnectBanner() {
-  const b = document.getElementById('reconnect-banner');
-  if (b) b.style.display = 'block';
-}
-function hideReconnectBanner() {
-  const b = document.getElementById('reconnect-banner');
-  if (b) b.style.display = 'none';
-}
-
 let _tunnelUrl = '';
-
 function copyTunnel() {
   if (!_tunnelUrl) return;
   navigator.clipboard.writeText(_tunnelUrl).then(() => {
     const el = document.getElementById('tunnel-url');
-    const orig = el.textContent;
-    el.textContent = '✅ 복사됨!';
+    const orig = el.textContent; el.textContent = '✅ 복사됨!';
     setTimeout(() => { el.textContent = orig; }, 1500);
   });
 }
-
 function copyPublicUrl() {
   if (!_tunnelUrl) return;
   navigator.clipboard.writeText(_tunnelUrl).then(() => {
     const btn = document.getElementById('share-btn');
-    const orig = btn.textContent;
-    btn.textContent = '✅ 복사됨!';
+    const orig = btn.textContent; btn.textContent = '✅ 복사됨!';
     setTimeout(() => { btn.textContent = orig; }, 1500);
   });
 }
 
-// ─── 서버 기동 대기 오버레이 ──────────────────────────────────────────────────
+// ─── 서버 기동 오버레이 ────────────────────────────────────────────────────────
 let _wakeTimer = null;
 function showWakeOverlay() {
   let el = document.getElementById('wake-overlay');
   if (!el) {
-    el = document.createElement('div');
-    el.id = 'wake-overlay';
-    el.style.cssText = `position:fixed;inset:0;background:rgba(0,0,0,.82);
+    el = document.createElement('div'); el.id = 'wake-overlay';
+    el.style.cssText = `position:fixed;inset:0;background:rgba(0,0,0,.85);
       display:flex;flex-direction:column;align-items:center;justify-content:center;
-      z-index:999;color:#eee;font-size:1rem;gap:18px;`;
-    el.innerHTML = `
-      <div style="font-size:2rem">🎲</div>
-      <div style="font-weight:bold">서버를 시작하는 중입니다...</div>
-      <div style="font-size:.85rem;color:#aaa">무료 서버는 첫 접속 시 최대 60초가 걸릴 수 있습니다.</div>
-      <div style="width:200px;height:4px;background:#333;border-radius:2px;overflow:hidden">
-        <div id="wake-bar" style="height:100%;background:#e94560;width:0%;transition:width 1s linear"></div>
+      z-index:999;color:#e8dcc8;font-size:1rem;gap:18px;`;
+    el.innerHTML = `<div style="font-size:2.5rem">🎲</div>
+      <div style="font-weight:700;color:#d4a843">서버를 시작하는 중입니다...</div>
+      <div style="font-size:.85rem;color:#7a9e7a">무료 서버는 첫 접속 시 최대 60초가 걸릴 수 있습니다.</div>
+      <div style="width:200px;height:4px;background:#1a3a1a;border-radius:2px;overflow:hidden">
+        <div id="wake-bar" style="height:100%;background:linear-gradient(90deg,#27ae60,#d4a843);width:0%;transition:width 1s linear"></div>
       </div>`;
     document.body.appendChild(el);
     let pct = 0;
     const iv = setInterval(() => {
       pct = Math.min(pct + 1.8, 95);
       const bar = document.getElementById('wake-bar');
-      if (bar) bar.style.width = pct + '%';
-      else clearInterval(iv);
+      if (bar) bar.style.width = pct + '%'; else clearInterval(iv);
     }, 1000);
     el._iv = iv;
   }
@@ -545,55 +732,135 @@ function hideWakeOverlay() {
   if (_wakeTimer) { clearTimeout(_wakeTimer); _wakeTimer = null; }
 }
 
-// ─── Socket 연결 ──────────────────────────────────────────────────────────────
-function connect() {
-  // 10초 안에 연결 안 되면 "서버 기동 중" 오버레이 표시
-  _wakeTimer = setTimeout(showWakeOverlay, 10000);
+function showReconnectBanner() { const b = document.getElementById('reconnect-banner'); if (b) b.style.display = 'block'; }
+function hideReconnectBanner() { const b = document.getElementById('reconnect-banner'); if (b) b.style.display = 'none'; }
 
+// ─── 주사위 굴리기 애니메이션 ─────────────────────────────────────────────────
+let _rollAnimTimer = null;
+
+function makeDieFace(num, isWhite) {
+  const wrap = document.createElement('div');
+  wrap.className = 'die-wrap';
+  wrap.style.setProperty('--spd', (0.15 + Math.random() * 0.12) + 's');
+  wrap.style.setProperty('--dl', (Math.random() * 0.08) + 's');
+
+  const face = document.createElement('div');
+  face.className = 'die-face' + (isWhite ? ' white-die' : '') + ' p' + num;
+  for (let i = 0; i < num; i++) {
+    const pip = document.createElement('div'); pip.className = 'pip'; face.appendChild(pip);
+  }
+  wrap.appendChild(face);
+  return wrap;
+}
+
+function randomDieNum() { return Math.floor(Math.random() * 6) + 1; }
+
+function showRollAnimation(diceCount, whiteCount, label) {
+  const overlay = document.getElementById('dice-roll-overlay');
+  const stage   = document.getElementById('dice-stage');
+  const lbl     = document.getElementById('roll-label-text');
+  lbl.textContent = label || '🎲 주사위를 굴리는 중...';
+  stage.innerHTML = '';
+
+  const total = Math.min(diceCount + whiteCount, 10);
+  for (let i = 0; i < Math.min(diceCount, 8); i++) {
+    stage.appendChild(makeDieFace(randomDieNum(), false));
+  }
+  for (let i = 0; i < Math.min(whiteCount, 4); i++) {
+    stage.appendChild(makeDieFace(randomDieNum(), true));
+  }
+
+  overlay.classList.add('show');
+
+  // 주사위가 랜덤 값으로 빠르게 바뀌는 시뮬레이션
+  let _scramble = setInterval(() => {
+    stage.querySelectorAll('.die-face').forEach((face, i) => {
+      const isWht = face.classList.contains('white-die');
+      const n = randomDieNum();
+      face.className = 'die-face' + (isWht ? ' white-die' : '') + ' p' + n;
+      face.innerHTML = '';
+      for (let p = 0; p < n; p++) { const pip = document.createElement('div'); pip.className = 'pip'; face.appendChild(pip); }
+    });
+  }, 80);
+
+  // 1초 후 서서히 멈춤 효과
+  _rollAnimTimer = setTimeout(() => {
+    clearInterval(_scramble);
+    stage.querySelectorAll('.die-wrap').forEach((wrap, i) => {
+      wrap.classList.remove('die-wrap'); // 애니메이션 제거 트릭
+      void wrap.offsetWidth;
+      wrap.classList.add('die-wrap', 'settling');
+      wrap.style.setProperty('--dl2', (i * 0.05) + 's');
+    });
+  }, 900);
+}
+
+function hideRollAnimation() {
+  if (_rollAnimTimer) { clearTimeout(_rollAnimTimer); _rollAnimTimer = null; }
+  document.getElementById('dice-roll-overlay').classList.remove('show');
+}
+
+function showSettledDice(roll) {
+  // 애니메이션을 실제 굴린 결과로 업데이트한 후 잠깐 보여주고 닫기
+  const stage = document.getElementById('dice-stage');
+  stage.innerHTML = '';
+  const pipEntries = Object.entries(roll.ownPips).filter(([,v]) => v > 0);
+  const whitePipEntries = Object.entries(roll.whitePips).filter(([,v]) => v > 0);
+
+  pipEntries.forEach(([pip, cnt]) => {
+    for (let i = 0; i < cnt; i++) {
+      const wrap = document.createElement('div'); wrap.className = 'die-wrap settling';
+      wrap.style.setProperty('--dl2', (i * 0.04) + 's');
+      const face = document.createElement('div');
+      face.className = 'die-face p' + pip;
+      for (let p = 0; p < Number(pip); p++) { const d = document.createElement('div'); d.className = 'pip'; face.appendChild(d); }
+      wrap.appendChild(face); stage.appendChild(wrap);
+    }
+  });
+  whitePipEntries.forEach(([pip, cnt]) => {
+    for (let i = 0; i < cnt; i++) {
+      const wrap = document.createElement('div'); wrap.className = 'die-wrap settling';
+      wrap.style.setProperty('--dl2', (i * 0.04) + 's');
+      const face = document.createElement('div');
+      face.className = 'die-face white-die p' + pip;
+      for (let p = 0; p < Number(pip); p++) { const d = document.createElement('div'); d.className = 'pip'; face.appendChild(d); }
+      wrap.appendChild(face); stage.appendChild(wrap);
+    }
+  });
+
+  document.getElementById('roll-label-text').textContent = '✅ 결과 확인!';
+  setTimeout(() => hideRollAnimation(), 700);
+}
+
+// ─── Socket 연결 ───────────────────────────────────────────────────────────────
+function connect() {
+  _wakeTimer = setTimeout(showWakeOverlay, 10000);
   socket = io(location.origin, {
-    autoConnect: false,
-    reconnection: true,
-    reconnectionAttempts: Infinity,
-    reconnectionDelay: 1000,
-    reconnectionDelayMax: 5000,
-    timeout: 60000,
-    transports: ['websocket', 'polling'],  // WebSocket 우선, 실패 시 polling 폴백
+    autoConnect: false, reconnection: true,
+    reconnectionAttempts: Infinity, reconnectionDelay: 1000,
+    reconnectionDelayMax: 5000, timeout: 60000,
+    transports: ['websocket', 'polling'],
   });
 
   socket.on('connect', () => {
-    hideWakeOverlay();
-    hideReconnectBanner();
+    hideWakeOverlay(); hideReconnectBanner();
     if (myRoomId && myPlayerId) {
       socket.emit('room:state', { roomId: myRoomId, playerId: myPlayerId }, (res) => {
         if (res?.ok) {
           gameState = res.data;
-          // 게임 화면이 아직 표시 중이면 renderGame만, 아니면 enterGame도
-          if (document.getElementById('game').style.display !== 'none') {
-            renderGame();
-          } else {
-            enterGame();
-            renderGame();
-          }
+          if (document.getElementById('game').style.display !== 'none') renderGame();
+          else { enterGame(); renderGame(); }
           log('재연결됨', 'sys');
         } else {
-          // 방이 사라진 경우 세션 초기화
           sessionStorage.removeItem('diceSession');
           myPlayerId = myRoomId = null;
         }
       });
-    } else {
-      log('서버 연결됨', 'sys');
-    }
+    } else { log('서버 연결됨', 'sys'); }
   });
 
-  socket.on('disconnect', (reason) => {
-    log('연결 끊김 — 재연결 시도 중...', 'err');
-    showReconnectBanner();
-  });
-
-  socket.on('connect_error', () => {
-    showReconnectBanner();
-  });
+  socket.on('disconnect', () => { log('연결 끊김 — 재연결 시도 중...', 'err'); showReconnectBanner(); });
+  socket.on('connect_error', () => showReconnectBanner());
 
   socket.on('state:update', (state) => {
     gameState = state;
@@ -603,32 +870,35 @@ function connect() {
 
   socket.on('turn:rolled', ({ roll }) => {
     currentRoll = roll;
-    renderActions(gameState); // pip 선택 UI 표시
+    showSettledDice(roll);                // 결과 주사위 표시 후 자동으로 닫힘
+    setTimeout(() => renderActions(gameState), 750); // pip 선택 UI
   });
-  socket.on('turn:rolling',      ({ playerId }) => log(`${nick(playerId)}이(가) 굴리는 중...`));
-  socket.on('turn:timeout',      ({ playerId }) => log(`⏰ ${nick(playerId)} 타임아웃 — 자동처리`, 'sys'));
-  socket.on('player:joined',     ({ player })   => log(`👤 ${player.nickname} 입장`));
+
+  socket.on('turn:rolling', ({ playerId }) => {
+    const p = gameState?.players.find(pp => pp.id === playerId);
+    const ownCnt   = p?.ownDiceRemaining   ?? 4;
+    const whiteCnt = p?.whiteDiceRemaining ?? 0;
+    showRollAnimation(ownCnt, whiteCnt, `🎲 ${nick(playerId)}이(가) 굴리는 중...`);
+    setTimeout(() => hideRollAnimation(), 1800);
+    log(`${nick(playerId)}이(가) 굴리는 중...`);
+  });
+
+  socket.on('turn:timeout',       ({ playerId }) => log(`⏰ ${nick(playerId)} 타임아웃 — 자동처리`, 'sys'));
+  socket.on('player:joined',      ({ player })   => log(`👤 ${player.nickname} 입장`));
   socket.on('player:disconnected',({ playerId }) => log(`🔌 ${nick(playerId)} 연결 끊김`, 'err'));
   socket.on('game:ended', ({ winner, winnerDetails }) => {
     log(`🏆 게임 종료! 승자: ${winner}`, 'win');
-    stopTimer();
-    showWinnerOverlay(winner, winnerDetails);
+    stopTimer(); showWinnerOverlay(winner, winnerDetails);
   });
-
-  socket.on('chat:message', (msg) => {
-    appendChat({ ...msg, isMe: msg.playerId === myPlayerId });
-  });
+  socket.on('chat:message', (msg) => appendChat({ ...msg, isMe: msg.playerId === myPlayerId }));
 
   socket.connect();
 }
 
-// 모바일 화면 복귀 시 연결 상태 확인 및 강제 재연결
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible' && socket) {
-    if (!socket.connected) {
-      socket.connect();
-    } else if (myRoomId && myPlayerId) {
-      // 연결은 살아있지만 상태가 오래됐을 수 있으므로 동기화
+    if (!socket.connected) { socket.connect(); }
+    else if (myRoomId && myPlayerId) {
       socket.emit('room:state', { roomId: myRoomId, playerId: myPlayerId }, (res) => {
         if (res?.ok) { gameState = res.data; renderGame(); }
       });
@@ -636,11 +906,7 @@ document.addEventListener('visibilitychange', () => {
   }
 });
 
-// 페이지 로드 시 이전 세션 자동 재연결 (모바일 새로고침 대응)
-if (myRoomId && myPlayerId) {
-  enterGame();
-  connect();
-}
+if (myRoomId && myPlayerId) { enterGame(); connect(); }
 
 // ─── 로비 버튼 ────────────────────────────────────────────────────────────────
 document.getElementById('create-btn').onclick = () => {
@@ -649,13 +915,10 @@ document.getElementById('create-btn').onclick = () => {
   connect();
   socket.emit('room:create', { nickname }, (res) => {
     if (!res.ok) return lobbyErr(res.msg);
-    myPlayerId = res.data.playerId;
-    myRoomId   = res.data.roomId;
-    isHost     = true;
+    myPlayerId = res.data.playerId; myRoomId = res.data.roomId; isHost = true;
     gameState  = res.data.state;
     sessionStorage.setItem('diceSession', JSON.stringify({ pid: myPlayerId, rid: myRoomId, host: true }));
-    enterGame();
-    renderGame();
+    enterGame(); renderGame();
     log(`방 생성됨 — 코드: ${myRoomId}`, 'sys');
   });
 };
@@ -668,52 +931,40 @@ document.getElementById('join-btn').onclick = () => {
   connect();
   socket.emit('room:join', { roomId, nickname }, (res) => {
     if (!res.ok) return lobbyErr(res.msg);
-    myPlayerId = res.data.playerId;
-    myRoomId   = roomId;
-    gameState  = res.data.state;
+    myPlayerId = res.data.playerId; myRoomId = roomId; gameState = res.data.state;
     sessionStorage.setItem('diceSession', JSON.stringify({ pid: myPlayerId, rid: myRoomId, host: false }));
-    enterGame();
-    renderGame();
+    enterGame(); renderGame();
     log(`방 ${roomId} 입장 완료`, 'sys');
   });
 };
 
-// ─── AI 추가 ──────────────────────────────────────────────────────────────────
-function addBot() {
-  socket.emit('bot:add', {}, (res) => {
-    if (!res.ok) log('AI 추가 실패: ' + res.msg, 'err');
-  });
-}
-function removeBot() {
-  socket.emit('bot:remove', {}, (res) => {
-    if (!res.ok) log('AI 제거 실패: ' + res.msg, 'err');
-  });
-}
+function addBot() { socket.emit('bot:add',    {}, (res) => { if (!res.ok) log('AI 추가 실패: ' + res.msg, 'err'); }); }
+function removeBot() { socket.emit('bot:remove', {}, (res) => { if (!res.ok) log('AI 제거 실패: ' + res.msg, 'err'); }); }
 
-// ─── 설정 / 시작 ──────────────────────────────────────────────────────────────
 document.getElementById('apply-config').onclick = () => {
   const config = {
-    mode:         document.getElementById('cfg-mode').value,
-    totalRounds:  Number(document.getElementById('cfg-rounds').value),
+    mode: document.getElementById('cfg-mode').value,
+    totalRounds: Number(document.getElementById('cfg-rounds').value),
     useWhiteDice: document.getElementById('cfg-white').checked,
-    turnTimeMs:   Number(document.getElementById('cfg-time').value),
+    turnTimeMs: Number(document.getElementById('cfg-time').value),
   };
   socket.emit('room:configure', { config }, (res) => {
-    if (!res.ok) log(`설정 오류: ${res.msg}`, 'err');
-    else         log('설정 적용됨', 'sys');
+    if (!res.ok) log(`설정 오류: ${res.msg}`, 'err'); else log('설정 적용됨', 'sys');
   });
 };
 
 document.getElementById('start-btn').onclick = () => {
-  socket.emit('game:start', {}, (res) => {
-    if (!res.ok) log(`시작 오류: ${res.msg}`, 'err');
-  });
+  socket.emit('game:start', {}, (res) => { if (!res.ok) log(`시작 오류: ${res.msg}`, 'err'); });
 };
 
-// ─── 게임 액션 ────────────────────────────────────────────────────────────────
 document.getElementById('roll-btn').onclick = () => {
+  const me = gameState?.players.find(p => p.id === myPlayerId);
+  const ownCnt   = me?.ownDiceRemaining   ?? 8;
+  const whiteCnt = me?.whiteDiceRemaining ?? 0;
+  showRollAnimation(ownCnt, whiteCnt, '🎲 주사위를 굴리는 중...');
   socket.emit('turn:roll', {}, (res) => {
-    if (!res.ok) log(res.msg, 'err');
+    if (!res.ok) { hideRollAnimation(); log(res.msg, 'err'); }
+    // 성공 시 turn:rolled 이벤트에서 처리
   });
 };
 
@@ -727,15 +978,10 @@ document.getElementById('room-label').onclick = () => {
 function renderGame() {
   if (!gameState) return;
   const s = gameState;
-
   document.getElementById('room-label').textContent  = `방 코드: ${s.roomId}  (클릭해서 복사)`;
   document.getElementById('round-label').textContent =
     s.phase === 'WAITING' ? '대기 중' : `라운드 ${s.currentRound} / ${s.config.totalRounds}`;
-
-  renderPlayers(s);
-  renderBoard(s);
-  renderActions(s);
-  updateTimer(s);
+  renderPlayers(s); renderBoard(s); renderActions(s); updateTimer(s);
 }
 
 function renderPlayers(s) {
@@ -743,9 +989,9 @@ function renderPlayers(s) {
   document.getElementById('players').innerHTML = s.players.map(p => {
     const active = p.id === curPid && s.phase !== 'WAITING' && s.phase !== 'ENDED';
     return `<div class="player-card${active ? ' active' : ''}"
-                 style="border-color:${active ? p.color : '#333'}">
+                 style="--pc:${p.color};border-color:${active ? p.color : '#2a4a2a'}">
       <div class="pname" style="color:${p.color}">
-        ${p.nickname}${p.id === myPlayerId ? ' <small>(나)</small>' : ''}
+        ${escHtml(p.nickname)}${p.id === myPlayerId ? ' <small style="color:#7a9e7a">(나)</small>' : ''}
         ${!p.connected ? ' 🔌' : ''}
       </div>
       <div class="pmoney">${won(p.money)}</div>
@@ -753,9 +999,9 @@ function renderPlayers(s) {
         🎲 ${p.ownDiceRemaining}개
         ${s.config.useWhiteDice ? `<span class="dice-white" style="margin-left:4px">⬜ 흰${p.whiteDiceRemaining}</span>` : ''}
       </div>
-      ${active ? '<div class="ptag">현재 턴</div>' : ''}
-      ${p.isBot ? '<div class="ptag" style="background:#8e44ad">🤖 AI</div>' : ''}
-      ${p.team ? `<div class="ptag" style="background:${p.team === 'A' ? '#2980b9' : '#c0392b'}">${p.team}팀</div>` : ''}
+      ${active ? '<div class="ptag" style="background:#c8922a;color:#1a1008">현재 턴</div>' : ''}
+      ${p.isBot ? '<div class="ptag" style="background:#6c3483">🤖 AI</div>' : ''}
+      ${p.team ? `<div class="ptag" style="background:${p.team === 'A' ? '#1a6a9a' : '#8b2222'}">${p.team}팀</div>` : ''}
     </div>`;
   }).join('');
 }
@@ -771,25 +1017,22 @@ function renderBoard(s) {
 
     const billsHtml = bills.length
       ? bills.map(v => `<span class="bill">${won(v)}</span>`).join('')
-      : '<span style="color:#444;font-size:.7rem">지폐 없음</span>';
+      : '<span style="color:#2a5a2a;font-size:.7rem">지폐 없음</span>';
 
     const betsHtml = Object.entries(aggr).sort((a, b) => b[1] - a[1]).map(([owner, cnt]) => {
-      const p      = s.players.find(pp => pp.id === owner);
-      const isWht  = owner === 'WHITE';
+      const p = s.players.find(pp => pp.id === owner);
+      const isWht = owner === 'WHITE';
       const col    = isWht ? 'transparent' : (p ? p.color : '#aaa');
       const border = isWht ? '2px solid #7ecef5' : 'none';
-      const lbl    = isWht
-        ? `<span style="color:#7ecef5;font-weight:bold">⬜ 흰색</span>`
-        : (p ? p.nickname : owner);
+      const lbl    = isWht ? `<span style="color:#7ecef5;font-weight:700">⬜ 흰색</span>` : (p ? escHtml(p.nickname) : owner);
       return `<div class="bet-row">
         <div class="bet-dot" style="background:${col};border:${border};box-sizing:border-box"></div>
         <span class="bet-lbl">${lbl}: ${cnt}개</span>
       </div>`;
-    }).join('') || '<span style="color:#444;font-size:.7rem">배팅 없음</span>';
+    }).join('') || '<span style="color:#2a5a2a;font-size:.7rem">배팅 없음</span>';
 
-    const d = document.createElement('div');
-    d.className   = 'slot';
-    d.innerHTML   = `<h3>${pos}번 칸</h3>
+    const d = document.createElement('div'); d.className = 'slot';
+    d.innerHTML = `<div class="slot-header"><span class="slot-num">${pos}</span></div>
       <div class="bills">${billsHtml}</div>
       <div class="bets-area">${betsHtml}</div>`;
     el.appendChild(d);
@@ -798,14 +1041,13 @@ function renderBoard(s) {
 
 function renderActions(s) {
   if (!s) return;
-  const curPid    = s.turnOrder[s.currentTurnIdx];
-  const myTurn    = curPid === myPlayerId;
-  const rollBtn   = document.getElementById('roll-btn');
-  const pipDiv    = document.getElementById('pip-choice');
-  const cfgPanel  = document.getElementById('config-panel');
-  const title     = document.getElementById('action-title');
+  const curPid   = s.turnOrder[s.currentTurnIdx];
+  const myTurn   = curPid === myPlayerId;
+  const rollBtn  = document.getElementById('roll-btn');
+  const pipDiv   = document.getElementById('pip-choice');
+  const cfgPanel = document.getElementById('config-panel');
+  const title    = document.getElementById('action-title');
 
-  // 기본 상태 초기화
   rollBtn.style.display  = 'inline-block';
   rollBtn.disabled       = true;
   pipDiv.style.display   = 'none';
@@ -825,12 +1067,8 @@ function renderActions(s) {
     rollBtn.style.display = 'none';
 
   } else if (s.phase === 'ROLLING') {
-    if (myTurn) {
-      title.textContent = '🎲 내 턴! 주사위를 굴리세요';
-      rollBtn.disabled  = false;
-    } else {
-      title.textContent = `⏳ ${nick(curPid)}의 턴 — 대기 중...`;
-    }
+    if (myTurn) { title.textContent = '🎲 내 턴! 주사위를 굴리세요'; rollBtn.disabled = false; }
+    else         title.textContent = `⏳ ${nick(curPid)}의 턴 — 대기 중...`;
 
   } else if (s.phase === 'CHOOSING') {
     rollBtn.style.display = 'none';
@@ -850,19 +1088,16 @@ function renderActions(s) {
     rollBtn.style.display = 'none';
     if (isHost) {
       const replay = document.createElement('button');
-      replay.id        = 'replay-btn';
-      replay.className = 'btn-start';
-      replay.textContent = '🔄 다시 플레이';
-      replay.style.marginTop = '12px';
+      replay.id = 'replay-btn'; replay.className = 'btn-start';
+      replay.textContent = '🔄 다시 플레이'; replay.style.marginTop = '12px';
       replay.onclick = () => {
         socket.emit('game:reset', {}, (res) => {
           if (!res.ok) log('리셋 실패: ' + res.msg, 'err');
           else sessionStorage.removeItem('diceSession');
         });
       };
-      if (!document.getElementById('replay-btn')) {
+      if (!document.getElementById('replay-btn'))
         document.getElementById('action-panel').appendChild(replay);
-      }
     }
   }
 }
@@ -872,11 +1107,9 @@ function doBet(pip, diceType, count) {
     if (!res.ok) { log(res.msg, 'err'); return; }
     currentRoll = null;
     document.getElementById('pip-choice').style.display = 'none';
-    const typeLabel = diceType === 'white' ? '⬜ 흰색' : '🎲 일반';
-    log(`${pip}번 눈금에 ${typeLabel} 주사위 ${count}개 배팅`);
+    log(`${pip}번 눈금에 ${diceType === 'white' ? '⬜ 흰색' : '🎲 일반'} 주사위 ${count}개 배팅`);
   });
 }
-
 function doPass() {
   socket.emit('turn:pass', {}, (res) => {
     if (!res.ok) { log(res.msg, 'err'); return; }
@@ -897,51 +1130,39 @@ function buildPipButtons(roll) {
     const white = roll.whitePips[pip] || 0;
     if (own > 0 || white > 0) hasAny = true;
 
-    const col = document.createElement('div');
-    col.className = 'pip-col';
+    const col = document.createElement('div'); col.className = 'pip-col';
 
-    // 위: 일반 주사위 버튼 — 0개면 비활성
     const ownBtn = document.createElement('button');
-    ownBtn.className = 'pip-btn';
-    ownBtn.disabled  = own === 0;
-    ownBtn.innerHTML = `<strong>${pip}번</strong><br>
-      <small>🎲 <span class="dice-own">${own}개</span></small>`;
+    ownBtn.className = 'pip-btn'; ownBtn.disabled = own === 0;
+    ownBtn.innerHTML = `<strong>${pip}번</strong><br><small>🎲 <span class="dice-own">${own}개</span></small>`;
     if (own > 0) ownBtn.onclick = () => doBet(pip, 'own', own);
     col.appendChild(ownBtn);
 
-    // 아래: 흰색 주사위 버튼 — 흰 주사위가 있을 때만 컬럼에 추가
     if (hasWhite) {
       const wBtn = document.createElement('button');
-      wBtn.className       = 'pip-btn';
-      wBtn.style.borderColor = '#3a6a9a';
-      wBtn.disabled        = white === 0;
-      wBtn.innerHTML       = `<strong>${pip}번</strong><br>
-        <small><span class="dice-white">⬜ 흰${white}개</span></small>`;
+      wBtn.className = 'pip-btn'; wBtn.style.borderColor = '#2a5a8a'; wBtn.disabled = white === 0;
+      wBtn.innerHTML = `<strong>${pip}번</strong><br><small><span class="dice-white">⬜ 흰${white}개</span></small>`;
       if (white > 0) wBtn.onclick = () => doBet(pip, 'white', white);
       col.appendChild(wBtn);
     }
-
     c.appendChild(col);
   }
 
   if (!hasAny) {
-    // 배팅할 주사위가 전혀 없는 경우 패스 버튼만 표시
-    const btn = document.createElement('button');
-    btn.className   = 'pip-btn';
-    btn.style.borderColor = '#555';
-    btn.innerHTML   = '<strong>패스</strong><br><small style="color:#888">주사위 없음</small>';
-    btn.onclick     = () => doPass();
+    const btn = document.createElement('button'); btn.className = 'pip-btn';
+    btn.style.borderColor = '#2a4a2a';
+    btn.innerHTML = '<strong>패스</strong><br><small style="color:#4a7a4a">주사위 없음</small>';
+    btn.onclick = () => doPass();
     c.appendChild(btn);
   }
 }
 
-// ─── 타이머 ───────────────────────────────────────────────────────────────────
+// ─── 타이머 ──────────────────────────────────────────────────────────────────
 function updateTimer(s) {
   stopTimer();
   const fill = document.getElementById('timer-fill');
   if (!s.turnDeadline || s.phase === 'WAITING' || s.phase === 'ENDED' || s.phase === 'SETTLING') {
-    fill.style.width = '100%';
-    return;
+    fill.style.width = '100%'; return;
   }
   const total = s.config.turnTimeMs;
   timerInterval = setInterval(() => {
@@ -950,9 +1171,7 @@ function updateTimer(s) {
     if (fill.style.width === '0%') stopTimer();
   }, 200);
 }
-function stopTimer() {
-  if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
-}
+function stopTimer() { if (timerInterval) { clearInterval(timerInterval); timerInterval = null; } }
 
 // ─── 유틸 ────────────────────────────────────────────────────────────────────
 function enterGame() {
@@ -960,114 +1179,83 @@ function enterGame() {
   document.getElementById('game').style.display  = 'block';
 }
 function lobbyErr(msg) {
-  const el = document.getElementById('lobby-err');
-  el.textContent = msg;
+  const el = document.getElementById('lobby-err'); el.textContent = msg;
   setTimeout(() => { el.textContent = ''; }, 3000);
 }
 function nick(pid) {
   if (!gameState) return pid?.slice(0, 6) ?? '?';
   return gameState.players.find(p => p.id === pid)?.nickname ?? pid?.slice(0, 6) ?? '?';
 }
-function won(v) {
-  if (v === 0) return '0원';
-  return (v / 10000).toFixed(0) + '만원';
-}
+function won(v) { return v === 0 ? '0원' : (v / 10000).toFixed(0) + '만원'; }
 function log(msg, cls = '') {
   const el = document.getElementById('log');
-  const p  = document.createElement('p');
-  p.textContent = msg;
-  if (cls) p.className = cls;
-  el.appendChild(p);
-  el.scrollTop = el.scrollHeight;
+  const p  = document.createElement('p'); p.textContent = msg;
+  if (cls) p.className = cls; el.appendChild(p); el.scrollTop = el.scrollHeight;
 }
 
 // ─── 채팅 ────────────────────────────────────────────────────────────────────
-let _chatUnread = 0;
-let _activeTab  = 'log';
-
+let _chatUnread = 0, _activeTab = 'log';
 function switchTab(tab) {
   _activeTab = tab;
-  document.getElementById('tab-log').classList.toggle('active',  tab === 'log');
-  document.getElementById('tab-chat').classList.toggle('active', tab === 'chat');
-  document.getElementById('tab-log-btn').classList.toggle('active',  tab === 'log');
-  document.getElementById('tab-chat-btn').classList.toggle('active', tab === 'chat');
+  ['log','chat'].forEach(t => {
+    document.getElementById('tab-' + t).classList.toggle('active', t === tab);
+    document.getElementById('tab-' + t + '-btn').classList.toggle('active', t === tab);
+  });
   if (tab === 'chat') {
     _chatUnread = 0;
     const badge = document.getElementById('chat-badge');
-    badge.style.display = 'none';
-    badge.textContent   = '';
-    const msgs = document.getElementById('chat-msgs');
-    msgs.scrollTop = msgs.scrollHeight;
+    badge.style.display = 'none'; badge.textContent = '';
+    const msgs = document.getElementById('chat-msgs'); msgs.scrollTop = msgs.scrollHeight;
     document.getElementById('chat-input').focus();
   }
 }
-
 function sendChat() {
   const input = document.getElementById('chat-input');
   const text  = input.value.trim();
   if (!text || !socket) return;
-  socket.emit('chat:message', { text }, (res) => {
-    if (!res?.ok) log('채팅 전송 실패: ' + (res?.msg ?? ''), 'err');
-  });
+  socket.emit('chat:message', { text }, (res) => { if (!res?.ok) log('채팅 전송 실패', 'err'); });
   input.value = '';
 }
-
 function appendChat({ nickname, color, text, ts, isMe }) {
   const msgs = document.getElementById('chat-msgs');
-  const div  = document.createElement('div');
-  div.className = 'chat-msg';
+  const div  = document.createElement('div'); div.className = 'chat-msg';
   const time = new Date(ts).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
   div.innerHTML =
-    `<span class="chat-nick" style="color:${color}">${nickname}${isMe ? ' (나)' : ''}</span>` +
+    `<span class="chat-nick" style="color:${color}">${escHtml(nickname)}${isMe ? ' (나)' : ''}</span>` +
     `<span class="chat-text">${escHtml(text)}</span>` +
     `<span class="chat-time">${time}</span>`;
-  msgs.appendChild(div);
-  msgs.scrollTop = msgs.scrollHeight;
-
-  // 채팅 탭이 비활성 상태면 미확인 배지 증가
+  msgs.appendChild(div); msgs.scrollTop = msgs.scrollHeight;
   if (_activeTab !== 'chat') {
     _chatUnread++;
     const badge = document.getElementById('chat-badge');
-    badge.textContent   = _chatUnread > 9 ? '9+' : String(_chatUnread);
-    badge.style.display = 'inline';
+    badge.textContent = _chatUnread > 9 ? '9+' : String(_chatUnread); badge.style.display = 'inline';
   }
 }
-
 function escHtml(str) {
   return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
             .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
-// ─── 파티클(콘페티) ───────────────────────────────────────────────────────────
+// ─── 콘페티 ──────────────────────────────────────────────────────────────────
 let _confettiRaf = null;
 function startConfetti() {
-  const canvas = document.getElementById('confetti-canvas');
-  if (!canvas) return;
-  canvas.width  = window.innerWidth;
-  canvas.height = window.innerHeight;
+  const canvas = document.getElementById('confetti-canvas'); if (!canvas) return;
+  canvas.width = window.innerWidth; canvas.height = window.innerHeight;
   const ctx = canvas.getContext('2d');
-  const COLORS = ['#f0c040','#e94560','#5bc8f5','#27ae60','#a29bfe','#fd79a8','#fff'];
+  const COLORS = ['#d4a843','#c0392b','#5bc8f5','#27ae60','#a29bfe','#fd79a8','#fff'];
   const pieces = Array.from({ length: 120 }, () => ({
-    x: Math.random() * canvas.width,
-    y: Math.random() * -canvas.height,
-    r: 5 + Math.random() * 7,
-    c: COLORS[Math.floor(Math.random() * COLORS.length)],
-    vx: (Math.random() - .5) * 2.5,
-    vy: 2 + Math.random() * 3,
-    spin: (Math.random() - .5) * .15,
-    angle: Math.random() * Math.PI * 2,
+    x: Math.random() * canvas.width, y: Math.random() * -canvas.height,
+    r: 5 + Math.random() * 7, c: COLORS[Math.floor(Math.random() * COLORS.length)],
+    vx: (Math.random()-.5)*2.5, vy: 2+Math.random()*3,
+    spin: (Math.random()-.5)*.15, angle: Math.random()*Math.PI*2,
   }));
   function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     pieces.forEach(p => {
-      ctx.save();
-      ctx.translate(p.x, p.y);
-      ctx.rotate(p.angle);
-      ctx.fillStyle = p.c;
-      ctx.fillRect(-p.r / 2, -p.r / 2, p.r, p.r * .5);
-      ctx.restore();
+      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.angle);
+      ctx.fillStyle = p.c; ctx.fillRect(-p.r/2, -p.r/2, p.r, p.r*.5); ctx.restore();
       p.x += p.vx; p.y += p.vy; p.angle += p.spin;
-      if (p.y > canvas.height) { p.y = -p.r; p.x = Math.random() * canvas.width; }
+      if (p.y > canvas.height) { p.y = -p.r; p.x = Math.random()*canvas.width; }
     });
     _confettiRaf = requestAnimationFrame(draw);
   }
@@ -1076,71 +1264,55 @@ function startConfetti() {
 function stopConfetti() {
   if (_confettiRaf) { cancelAnimationFrame(_confettiRaf); _confettiRaf = null; }
   const canvas = document.getElementById('confetti-canvas');
-  if (canvas) canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+  if (canvas) canvas.getContext('2d').clearRect(0,0,canvas.width,canvas.height);
 }
 
 // ─── 우승자 오버레이 ──────────────────────────────────────────────────────────
 function showWinnerOverlay(winner, details) {
-  const elSubtitle  = document.getElementById('w-subtitle');
-  const elName      = document.getElementById('w-name');
-  const elMoney     = document.getElementById('w-money');
-  const elRankings  = document.getElementById('w-rankings');
-
-  // 전체 플레이어 순위표 (항상 표시)
-  const players = gameState ? [...gameState.players].sort((a, b) => b.money - a.money) : [];
-  const rankMedals = ['rank-1','rank-2','rank-3'];
+  const players  = gameState ? [...gameState.players].sort((a,b)=>b.money-a.money) : [];
+  const medals   = ['rank-1','rank-2','rank-3'];
+  const elSub    = document.getElementById('w-subtitle');
+  const elName   = document.getElementById('w-name');
+  const elMoney  = document.getElementById('w-money');
+  const elRanks  = document.getElementById('w-rankings');
 
   if (!details || details.isDraw) {
-    elSubtitle.textContent = '게임 종료';
-    elName.innerHTML       = '<span style="color:#aaa">🤝 무승부!</span>';
-    elMoney.textContent    = '';
+    elSub.textContent = '게임 종료'; elName.innerHTML = '<span style="color:#9ac89a">🤝 무승부!</span>'; elMoney.textContent = '';
   } else if (details.mode === '2v2') {
-    const winTeam  = details.winners[0]?.team ?? '?';
-    const teamCol  = winTeam === 'A' ? '#2980b9' : '#c0392b';
-    const teamMoney = details.teamMoneys ? details.teamMoneys[winTeam] : 0;
-    elSubtitle.textContent = '팀전 우승';
-    elName.innerHTML = `<span style="color:${teamCol}">${winTeam}팀 승리! 🎉</span>`;
-    elMoney.textContent = `팀 합산 ${won(teamMoney)}`;
+    const wt = details.winners[0]?.team ?? '?';
+    const tc = wt === 'A' ? '#1a6a9a' : '#8b2222';
+    elSub.textContent = '팀전 우승';
+    elName.innerHTML  = `<span style="color:${tc}">${wt}팀 승리! 🎉</span>`;
+    elMoney.textContent = `팀 합산 ${won(details.teamMoneys?.[wt] ?? 0)}`;
   } else {
     const w = details.winners[0];
-    elSubtitle.textContent = '개인전 우승';
-    elName.innerHTML = `<span style="color:${w.color}">${escHtml(w.nickname)}</span> 🎉`;
+    elSub.textContent = '개인전 우승';
+    elName.innerHTML  = `<span style="color:${w.color}">${escHtml(w.nickname)}</span> 🎉`;
     elMoney.textContent = won(w.money);
   }
 
-  // 순위표 렌더
   if (details && !details.isDraw && details.mode === '2v2') {
-    // 2v2: 팀별 합산 표시
-    const aTotal = details.teamMoneys?.A ?? 0;
-    const bTotal = details.teamMoneys?.B ?? 0;
-    const winTeam = details.winners[0]?.team;
-    elRankings.innerHTML = [
-      { team: 'A', money: aTotal },
-      { team: 'B', money: bTotal },
-    ].sort((a, b) => b.money - a.money).map((t, i) => {
-      const isWin = t.team === winTeam;
-      const teamCol = t.team === 'A' ? '#2980b9' : '#c0392b';
-      const members = players.filter(p => p.team === t.team)
-        .map(p => `<span style="color:${p.color}">${escHtml(p.nickname)}</span>`).join(', ');
+    const wt = details.winners[0]?.team;
+    const teams = [{ team:'A', money: details.teamMoneys?.A??0 }, { team:'B', money: details.teamMoneys?.B??0 }]
+      .sort((a,b)=>b.money-a.money);
+    elRanks.innerHTML = teams.map((t,i) => {
+      const tc = t.team==='A' ? '#1a6a9a' : '#8b2222';
+      const members = players.filter(p=>p.team===t.team).map(p=>`<span style="color:${p.color}">${escHtml(p.nickname)}</span>`).join(', ');
       return `<div class="w-rank-row">
-        <div class="w-rank-num ${rankMedals[i] ?? 'rank-n'}">${i + 1}</div>
-        <div class="w-rank-name">
-          <span style="color:${teamCol};font-weight:900">${t.team}팀</span>
-          <span style="font-size:.78rem;color:#888;margin-left:6px">${members}</span>
-        </div>
+        <div class="w-rank-num ${medals[i]??'rank-n'}">${i+1}</div>
+        <div class="w-rank-name"><span style="color:${tc};font-weight:900">${t.team}팀</span> <span style="font-size:.76rem;color:#7a9e7a">${members}</span></div>
         <div class="w-rank-money">${won(t.money)}</div>
-        ${isWin ? '<span class="w-rank-tag" style="background:#f0c040;color:#1a1a1a">👑 우승</span>' : ''}
+        ${t.team===wt?'<span class="w-rank-tag" style="background:#d4a843;color:#1a1008">👑 우승</span>':''}
       </div>`;
     }).join('');
   } else {
-    // 개인전: 전원 순위
-    elRankings.innerHTML = players.map((p, i) => {
-      const isWinner = details && !details.isDraw && details.winners[0]?.id === p.id;
+    elRanks.innerHTML = players.map((p,i) => {
+      const isW = details&&!details.isDraw&&details.winners[0]?.id===p.id;
       return `<div class="w-rank-row">
-        <div class="w-rank-num ${rankMedals[i] ?? 'rank-n'}">${i + 1}</div>
-        <div class="w-rank-name" style="color:${p.color}">${escHtml(p.nickname)}${p.id === myPlayerId ? ' <small style="color:#aaa">(나)</small>' : ''}</div>
+        <div class="w-rank-num ${medals[i]??'rank-n'}">${i+1}</div>
+        <div class="w-rank-name" style="color:${p.color}">${escHtml(p.nickname)}${p.id===myPlayerId?' <small style="color:#7a9e7a">(나)</small>':''}</div>
         <div class="w-rank-money">${won(p.money)}</div>
-        ${isWinner ? '<span class="w-rank-tag" style="background:#f0c040;color:#1a1a1a">👑 우승</span>' : ''}
+        ${isW?'<span class="w-rank-tag" style="background:#d4a843;color:#1a1008">👑 우승</span>':''}
       </div>`;
     }).join('');
   }
